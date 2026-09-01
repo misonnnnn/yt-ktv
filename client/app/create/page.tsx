@@ -3,21 +3,37 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { MOCK_ROOM_ID } from "@/lib/mock-data";
+import { createRoom } from "@/lib/api";
 
 export default function CreatePartyPage() {
   const router = useRouter();
   const [partyName, setPartyName] = useState("Karaoke Night");
   const [hostName, setHostName] = useState("John");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  function handleCreate(e: React.FormEvent) {
+  async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
-    const params = new URLSearchParams({
-      room: MOCK_ROOM_ID,
-      party: partyName.trim() || "Karaoke Night",
-      host: hostName.trim() || "Host",
-    });
-    router.push(`/host?${params.toString()}`);
+    setLoading(true);
+    setError(null);
+
+    try {
+      const data = await createRoom(
+        partyName.trim() || "Karaoke Night",
+        hostName.trim() || "Host"
+      );
+
+      const params = new URLSearchParams({
+        room: data.room.roomCode,
+        party: data.room.partyName,
+        host: data.room.hostName,
+      });
+      router.push(`/host?${params.toString()}`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create party");
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
@@ -44,6 +60,12 @@ export default function CreatePartyPage() {
           onSubmit={handleCreate}
           className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-6 space-y-5"
         >
+          {error && (
+            <div className="rounded-xl bg-red-500/20 px-4 py-3 text-sm text-red-300">
+              {error}
+            </div>
+          )}
+
           <div>
             <label
               htmlFor="partyName"
@@ -80,9 +102,10 @@ export default function CreatePartyPage() {
 
           <button
             type="submit"
-            className="ktv-btn-primary w-full rounded-xl py-4 text-lg font-bold text-white"
+            disabled={loading}
+            className="ktv-btn-primary w-full rounded-xl py-4 text-lg font-bold text-white disabled:opacity-50"
           >
-            Create Party
+            {loading ? "Creating..." : "Create Party"}
           </button>
         </form>
       </main>

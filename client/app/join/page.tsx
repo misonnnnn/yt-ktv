@@ -11,7 +11,9 @@ export default function JoinPartyPage() {
 
   function handleJoin(e: React.FormEvent) {
     e.preventDefault();
-    const code = roomCode.trim().toUpperCase() || "KTV-7X2M";
+    const code = roomCode.trim().toUpperCase();
+    if (!code) return;
+
     const params = new URLSearchParams();
     if (nickname.trim()) params.set("name", nickname.trim());
     const qs = params.toString();
@@ -54,7 +56,7 @@ export default function JoinPartyPage() {
               type="text"
               value={roomCode}
               onChange={(e) => setRoomCode(e.target.value)}
-              placeholder="KTV-7X2M"
+              placeholder="ABC123"
               className="w-full rounded-xl border border-ktv-card-border bg-white/5 px-4 py-3 font-mono text-lg uppercase tracking-widest text-white placeholder:text-white/30 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500"
             />
           </div>

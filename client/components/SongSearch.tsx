@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { FormEvent, useState } from "react";
+import { searchYouTube } from "@/lib/api";
 import type { SearchResult } from "@/lib/types";
-import { mockSearchResults } from "@/lib/mock-data";
 
 type SongSearchProps = {
   onAddToQueue: (song: SearchResult) => void;
@@ -11,20 +11,35 @@ type SongSearchProps = {
 
 export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
   const [query, setQuery] = useState("");
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [hasSearched, setHasSearched] = useState(false);
 
-  const results =
-    query.trim() === ""
-      ? mockSearchResults
-      : mockSearchResults.filter(
-          (song) =>
-            song.title.toLowerCase().includes(query.toLowerCase()) ||
-            song.artist.toLowerCase().includes(query.toLowerCase()) ||
-            song.channel.toLowerCase().includes(query.toLowerCase())
-        );
+  async function handleSearch(e: FormEvent) {
+    e.preventDefault();
+
+    const trimmed = query.trim();
+    if (!trimmed) return;
+
+    setLoading(true);
+    setError(null);
+    setHasSearched(true);
+
+    try {
+      const data = await searchYouTube(trimmed);
+      setResults(data.results);
+    } catch (err) {
+      setResults([]);
+      setError(err instanceof Error ? err.message : "Search failed");
+    } finally {
+      setLoading(false);
+    }
+  }
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex items-center gap-3">
+      <form onSubmit={handleSearch} className="flex items-center gap-3">
         <div className="relative flex-1">
           <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-white/40">
             🔍
@@ -38,6 +53,13 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
             autoFocus
           />
         </div>
+        <button
+          type="submit"
+          disabled={loading || !query.trim()}
+          className="ktv-btn-primary rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {loading ? "..." : "Search"}
+        </button>
         {onClose && (
           <button
             type="button"
@@ -47,32 +69,48 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
             Close
           </button>
         )}
-      </div>
+      </form>
 
-      <p className="text-xs text-white/40">
-        {results.length} result{results.length !== 1 ? "s" : ""} — mock YouTube
-        search
-      </p>
+      {error && (
+        <div className="rounded-xl bg-red-500/20 px-4 py-3 text-sm text-red-300">
+          {error}
+        </div>
+      )}
+
+      {hasSearched && !loading && !error && (
+        <p className="text-xs text-white/40">
+          {results.length} result{results.length !== 1 ? "s" : ""}
+        </p>
+      )}
+
+      {!hasSearched && (
+        <p className="text-sm text-white/40">
+          Type a song name and press Search. Results come from YouTube.
+        </p>
+      )}
 
       <ul className="space-y-3">
         {results.map((song) => (
           <li
-            key={song.id}
+            key={song.videoId}
             className="flex items-center gap-3 rounded-xl border border-ktv-card-border bg-ktv-card/60 p-3"
           >
-            {/* Thumbnail placeholder */}
-            <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-900/60 to-pink-900/40">
-              <span className="text-2xl">🎵</span>
-            </div>
+            {song.thumbnail ? (
+              <img
+                src={song.thumbnail}
+                alt=""
+                className="h-16 w-24 shrink-0 rounded-lg object-cover"
+              />
+            ) : (
+              <div className="flex h-16 w-24 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-purple-900/60 to-pink-900/40">
+                <span className="text-2xl">🎵</span>
+              </div>
+            )}
             <div className="min-w-0 flex-1">
-              <p className="truncate font-medium text-white">
-                {song.title}{" "}
-                <span className="text-white/50">(Karaoke)</span>
-              </p>
+              <p className="truncate font-medium text-white">{song.title}</p>
               <p className="truncate text-sm text-white/50">
-                {song.artist} · {song.channel}
+                {song.channelTitle}
               </p>
-              <p className="text-xs text-white/30">{song.duration}</p>
             </div>
             <button
               type="button"
@@ -85,7 +123,7 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
         ))}
       </ul>
 
-      {results.length === 0 && (
+      {hasSearched && !loading && results.length === 0 && !error && (
         <p className="py-8 text-center text-white/40">
           No songs found. Try a different search term.
         </p>
