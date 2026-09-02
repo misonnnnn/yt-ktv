@@ -4,7 +4,7 @@ require("dotenv").config();
 const router = express.Router();
 
 router.get("/search", async (req, res) => {
-  const query = req.query.q;
+  const query = req.query.q + " karaoke";
 
   if (!query || String(query).trim() === "") {
     return res.status(400).json({ error: "Search query is required" });

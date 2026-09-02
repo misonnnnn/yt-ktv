@@ -4,7 +4,7 @@ const express = require("express");
 const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
-const pool = require("./db");
+const store = require("./store");
 const youtubeRoutes = require("./routes/youtube");
 
 const app = express();
@@ -35,11 +35,7 @@ function generateRoomCode() {
 }
 
 async function getRoomByCode(roomCode) {
-  const [rows] = await pool.query(
-    "SELECT id, room_code, party_name, host_name, created_at FROM rooms WHERE room_code = ?",
-    [roomCode.toUpperCase()]
-  );
-  return rows[0] || null;
+  return store.getRoomByCode(roomCode);
 }
 
 function formatQueueRow(row, position) {
@@ -57,14 +53,7 @@ function formatQueueRow(row, position) {
 }
 
 async function getQueueRows(roomId) {
-  const [rows] = await pool.query(
-    `SELECT id, video_id, song_title, artist, thumbnail, singer_name, status, created_at
-     FROM queue
-     WHERE room_id = ? AND status IN ('waiting', 'playing')
-     ORDER BY created_at ASC`,
-    [roomId]
-  );
-  return rows;
+  return store.getQueueRows(roomId);
 }
 
 async function buildRoomResponse(room) {
@@ -120,28 +109,17 @@ function emitPlayerChanged(roomCode, song) {
 }
 
 async function advanceQueue(roomId, roomCode, finishedStatus) {
-  const [playingRows] = await pool.query(
-    "SELECT * FROM queue WHERE room_id = ? AND status = 'playing' LIMIT 1",
-    [roomId]
-  );
+  const playing = await store.getPlayingItem(roomId);
 
-  if (playingRows[0]) {
-    await pool.query("UPDATE queue SET status = ? WHERE id = ?", [
-      finishedStatus,
-      playingRows[0].id,
-    ]);
+  if (playing) {
+    await store.updateQueueStatus(playing.id, finishedStatus, roomId);
   }
 
-  const [nextRows] = await pool.query(
-    "SELECT * FROM queue WHERE room_id = ? AND status = 'waiting' ORDER BY created_at ASC LIMIT 1",
-    [roomId]
-  );
+  const next = await store.getNextWaitingItem(roomId);
 
-  if (nextRows[0]) {
-    await pool.query("UPDATE queue SET status = 'playing' WHERE id = ?", [
-      nextRows[0].id,
-    ]);
-    emitPlayerChanged(roomCode, nextRows[0]);
+  if (next) {
+    await store.updateQueueStatus(next.id, "playing", roomId);
+    emitPlayerChanged(roomCode, next);
   } else {
     emitPlayerChanged(roomCode, null);
   }
@@ -173,14 +151,15 @@ app.post("/api/rooms", async (req, res) => {
 
     const roomCode = await createUniqueRoomCode();
 
-    const [result] = await pool.query(
-      "INSERT INTO rooms (room_code, party_name, host_name) VALUES (?, ?, ?)",
-      [roomCode, partyName, hostName]
-    );
+    const { insertId } = await store.createRoom({
+      roomCode,
+      partyName,
+      hostName,
+    });
 
     res.status(201).json({
       room: {
-        id: result.insertId,
+        id: insertId,
         roomCode,
         partyName,
         hostName,
@@ -244,24 +223,18 @@ app.post("/api/rooms/:roomCode/queue", async (req, res) => {
       });
     }
 
-    const [playingRows] = await pool.query(
-      "SELECT id FROM queue WHERE room_id = ? AND status = 'playing' LIMIT 1",
-      [room.id]
-    );
+    const playing = await store.getPlayingItem(room.id);
+    const status = playing ? "waiting" : "playing";
 
-    const status = playingRows.length === 0 ? "playing" : "waiting";
-
-    const [result] = await pool.query(
-      `INSERT INTO queue (room_id, video_id, song_title, artist, thumbnail, singer_name, status)
-       VALUES (?, ?, ?, ?, ?, ?, ?)`,
-      [room.id, videoId, songTitle, artist, thumbnail, singerName, status]
-    );
-
-    const [newRows] = await pool.query("SELECT * FROM queue WHERE id = ?", [
-      result.insertId,
-    ]);
-
-    const created = newRows[0];
+    const created = await store.insertQueueItem({
+      roomId: room.id,
+      videoId,
+      songTitle,
+      artist,
+      thumbnail,
+      singerName,
+      status,
+    });
 
     if (status === "playing") {
       emitPlayerChanged(room.room_code, created);
@@ -288,22 +261,19 @@ app.delete("/api/rooms/:roomCode/queue/:queueId", async (req, res) => {
 
     const queueId = Number(req.params.queueId);
 
-    const [rows] = await pool.query(
-      "SELECT * FROM queue WHERE id = ? AND room_id = ?",
-      [queueId, room.id]
-    );
+    const item = await store.getQueueItemById(queueId, room.id);
 
-    if (!rows[0]) {
+    if (!item) {
       return res.status(404).json({ error: "Queue item not found" });
     }
 
-    if (rows[0].status === "playing") {
+    if (item.status === "playing") {
       return res
         .status(400)
         .json({ error: "Cannot remove the song that is currently playing" });
     }
 
-    await pool.query("DELETE FROM queue WHERE id = ?", [queueId]);
+    await store.deleteQueueItem(queueId, room.id);
     emitQueueUpdated(room.room_code);
 
     res.json({ success: true });
@@ -391,5 +361,6 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 4000;
 
 server.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
+  console.log(`Server running on http://localhost:${PORT} (${storage})`);
 });
