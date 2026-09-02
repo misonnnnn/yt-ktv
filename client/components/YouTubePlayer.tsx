@@ -32,7 +32,11 @@ declare global {
 
   interface YTPlayer {
     loadVideoById: (videoId: string) => void;
+    playVideo: () => void;
+    pauseVideo: () => void;
+    stopVideo: () => void;
     destroy: () => void;
+    getPlayerState?: () => number;
   }
 }
 
@@ -61,32 +65,45 @@ function loadYouTubeApi() {
   return apiReadyPromise;
 }
 
+function playVideo(player: YTPlayer, videoId: string) {
+  player.loadVideoById(videoId);
+  player.playVideo();
+}
+
 export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) {
   const playerRef = useRef<YTPlayer | null>(null);
+  const playerReadyRef = useRef(false);
   const onEndedRef = useRef(onEnded);
+  const videoIdRef = useRef(videoId);
   const containerId = "youtube-player-container";
 
   onEndedRef.current = onEnded;
+  videoIdRef.current = videoId;
 
   useEffect(() => {
-    if (!videoId) return;
-
     let cancelled = false;
 
     async function setupPlayer() {
       await loadYouTubeApi();
-      if (cancelled) return;
+      if (cancelled || playerRef.current) return;
 
       playerRef.current = new window.YT.Player(containerId, {
         height: "100%",
         width: "100%",
-        videoId: videoId ?? undefined,
         playerVars: {
           autoplay: 1,
           rel: 0,
           modestbranding: 1,
+          playsinline: 1,
         },
         events: {
+          onReady: (event) => {
+            playerReadyRef.current = true;
+            const id = videoIdRef.current;
+            if (id) {
+              playVideo(event.target, id);
+            }
+          },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.ENDED) {
               onEndedRef.current();
@@ -100,14 +117,33 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
 
     return () => {
       cancelled = true;
+      playerReadyRef.current = false;
       playerRef.current?.destroy();
       playerRef.current = null;
     };
+  }, []);
+
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!videoId) {
+      if (playerReadyRef.current && player) {
+        player.stopVideo();
+      }
+      return;
+    }
+
+    if (playerReadyRef.current && player) {
+      playVideo(player, videoId);
+    }
   }, [videoId]);
 
-  if (!videoId) {
-    return (
-      <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-ktv-card-border bg-black">
+  return (
+    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow">
+      <div
+        id={containerId}
+        className={videoId ? "h-full w-full" : "pointer-events-none h-full w-full opacity-0"}
+      />
+      {!videoId && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-8">
           <div className="text-4xl">🎤</div>
           <p className="text-xl font-semibold text-white/80">No song playing</p>
@@ -115,13 +151,7 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
             Add songs to the queue to get started
           </p>
         </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow">
-      <div id={containerId} className="h-full w-full" />
+      )}
     </div>
   );
 }
