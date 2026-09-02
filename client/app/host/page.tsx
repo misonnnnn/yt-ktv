@@ -6,7 +6,9 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 import YouTubePlayer from "@/components/YouTubePlayer";
 import Queue from "@/components/Queue";
+import SongSearch from "@/components/SongSearch";
 import {
+  addToQueue,
   apiItemToNowPlaying,
   finishSong,
   getJoinUrl,
@@ -14,7 +16,7 @@ import {
   skipSong,
 } from "@/lib/api";
 import { connectToRoom } from "@/lib/socket";
-import type { NowPlaying, QueueItem, RoomInfo } from "@/lib/types";
+import type { NowPlaying, QueueItem, RoomInfo, SearchResult } from "@/lib/types";
 import { toQueueItem } from "@/lib/types";
 
 function HostScreenContent() {
@@ -30,6 +32,7 @@ function HostScreenContent() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [skipping, setSkipping] = useState(false);
+  const [showSearch, setShowSearch] = useState(false);
 
   const loadRoom = useCallback(async () => {
     if (!roomCode) {
@@ -101,6 +104,23 @@ function HostScreenContent() {
       console.error("Failed to skip song:", err);
     } finally {
       setSkipping(false);
+    }
+  }
+
+  async function handleAddToQueue(song: SearchResult) {
+    const singer = room?.hostName || fallbackHost || "Host";
+    try {
+      await addToQueue(roomCode, {
+        videoId: song.videoId,
+        songTitle: song.title,
+        artist: song.channelTitle,
+        thumbnail: song.thumbnail,
+        singerName: singer,
+      });
+      setShowSearch(false);
+      await loadRoom();
+    } catch (err) {
+      console.error("Failed to add song:", err);
     }
   }
 
@@ -209,6 +229,23 @@ function HostScreenContent() {
               {roomCode}
             </p>
           </div>
+
+          {showSearch ? (
+            <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4">
+              <SongSearch
+                onAddToQueue={handleAddToQueue}
+                onClose={() => setShowSearch(false)}
+              />
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setShowSearch(true)}
+              className="ktv-btn-primary w-full rounded-2xl py-3 text-sm font-bold text-white"
+            >
+              + Add Song
+            </button>
+          )}
 
           <Queue items={upNext} title="Up Next" />
         </div>
