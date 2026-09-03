@@ -10,11 +10,11 @@ export default function HomePage() {
         </div>
 
         <h1 className="mb-4 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl md:text-7xl">
-          KaraokeTV
+          TaraSing
         </h1>
 
         <p className="mb-2 text-xl font-medium text-white/80 sm:text-2xl">
-          Your living room. Your stage.
+          Your living room. Your stage. Let's sing!
         </p>
 
         <p className="mb-12 max-w-lg text-base leading-relaxed text-white/50 sm:text-lg">

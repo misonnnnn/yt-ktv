@@ -13,8 +13,11 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "KaraokeTV — Online KTV Party",
+  title: "TaraSing",
   description: "Host a karaoke party on the big screen. Friends join from their phones.",
+  icons: {
+    icon: "/favicon.ico",
+  },
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
