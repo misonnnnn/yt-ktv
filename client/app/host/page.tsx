@@ -2,9 +2,11 @@
 
 import { QRCodeSVG } from "qrcode.react";
 import { useSearchParams } from "next/navigation";
-import { Suspense, useCallback, useEffect, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
-import YouTubePlayer from "@/components/YouTubePlayer";
+import YouTubePlayer, {
+  type YouTubePlayerHandle,
+} from "@/components/YouTubePlayer";
 import Queue from "@/components/Queue";
 import SongSearch from "@/components/SongSearch";
 import {
@@ -33,6 +35,22 @@ function HostScreenContent() {
   const [error, setError] = useState<string | null>(null);
   const [skipping, setSkipping] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
+  const playerRef = useRef<YouTubePlayerHandle>(null);
+  const upNextRef = useRef(upNext);
+  const nowPlayingRef = useRef(nowPlaying);
+  upNextRef.current = upNext;
+  nowPlayingRef.current = nowPlaying;
+
+  function playNextInQueue() {
+    const next = upNextRef.current[0];
+    if (next?.videoId) {
+      // Call play() in this tap/ended callback. Waiting for the API
+      // response loses the mobile user-gesture, so the next video sits paused.
+      playerRef.current?.play(next.videoId);
+    } else {
+      playerRef.current?.stop();
+    }
+  }
 
   const loadRoom = useCallback(async () => {
     if (!roomCode) {
@@ -88,6 +106,7 @@ function HostScreenContent() {
 
   async function handleSongEnded() {
     if (!roomCode) return;
+    playNextInQueue();
     try {
       await finishSong(roomCode);
     } catch (err) {
@@ -97,6 +116,7 @@ function HostScreenContent() {
 
   async function handleSkip() {
     if (!roomCode || skipping) return;
+    playNextInQueue();
     setSkipping(true);
     try {
       await skipSong(roomCode);
@@ -109,6 +129,9 @@ function HostScreenContent() {
 
   async function handleAddToQueue(song: SearchResult) {
     const singer = room?.hostName || fallbackHost || "Host";
+    if (!nowPlayingRef.current?.videoId) {
+      playerRef.current?.play(song.videoId);
+    }
     try {
       await addToQueue(roomCode, {
         videoId: song.videoId,
@@ -176,6 +199,7 @@ function HostScreenContent() {
         <div className="flex flex-col gap-4 lg:min-h-0">
           <div className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">
             <YouTubePlayer
+              ref={playerRef}
               className="h-full w-full"
               videoId={nowPlaying?.videoId || null}
               onEnded={handleSongEnded}
