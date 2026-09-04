@@ -57,7 +57,7 @@ export default function HomePage() {
       </main>
 
       <footer className="py-6 text-center text-xs text-white/30">
-        KaraokeTV — UI preview with mock data
+        TaraSing - Karaoke for the whole family
       </footer>
     </div>
   );

@@ -65,29 +65,25 @@ function loadYouTubeApi() {
   return apiReadyPromise;
 }
 
-function playVideo(player: YTPlayer, videoId: string) {
-  player.loadVideoById(videoId);
-  player.playVideo();
-}
-
 export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) {
-  const playerRef = useRef<YTPlayer | null>(null);
-  const playerReadyRef = useRef(false);
   const onEndedRef = useRef(onEnded);
-  const videoIdRef = useRef(videoId);
-  const containerId = "youtube-player-container";
-
   onEndedRef.current = onEnded;
-  videoIdRef.current = videoId;
 
+  // Create a fresh player only when we have a video.
+  // (Creating it while hidden often causes black video + working audio.)
   useEffect(() => {
+    if (!videoId) return;
+
     let cancelled = false;
+    let player: YTPlayer | null = null;
 
     async function setupPlayer() {
       await loadYouTubeApi();
-      if (cancelled || playerRef.current) return;
+      if (cancelled) return;
 
-      playerRef.current = new window.YT.Player(containerId, {
+      // YouTube replaces this div with an iframe
+      player = new window.YT.Player("youtube-player-container", {
+        videoId,
         height: "100%",
         width: "100%",
         playerVars: {
@@ -98,11 +94,8 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
         },
         events: {
           onReady: (event) => {
-            playerReadyRef.current = true;
-            const id = videoIdRef.current;
-            if (id) {
-              playVideo(event.target, id);
-            }
+            // Make sure playback actually starts
+            event.target.playVideo();
           },
           onStateChange: (event) => {
             if (event.data === window.YT.PlayerState.ENDED) {
@@ -111,39 +104,31 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
           },
         },
       });
+
+      // If the song already changed while we were setting up, clean up
+      if (cancelled) {
+        player.destroy();
+        player = null;
+      }
     }
 
-    setupPlayer();
+    void setupPlayer();
 
     return () => {
       cancelled = true;
-      playerReadyRef.current = false;
-      playerRef.current?.destroy();
-      playerRef.current = null;
+      player?.destroy();
+      player = null;
     };
-  }, []);
-
-  useEffect(() => {
-    const player = playerRef.current;
-    if (!videoId) {
-      if (playerReadyRef.current && player) {
-        player.stopVideo();
-      }
-      return;
-    }
-
-    if (playerReadyRef.current && player) {
-      playVideo(player, videoId);
-    }
   }, [videoId]);
 
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow">
-      <div
-        id={containerId}
-        className={videoId ? "h-full w-full" : "pointer-events-none h-full w-full opacity-0"}
-      />
-      {!videoId && (
+      {videoId ? (
+        // key forces a brand-new empty div for YouTube to fill each song
+        <div key={videoId} className="absolute inset-0 h-full w-full">
+          <div id="youtube-player-container" className="h-full w-full" />
+        </div>
+      ) : (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-8">
           <div className="text-4xl">🎤</div>
           <p className="text-xl font-semibold text-white/80">No song playing</p>
