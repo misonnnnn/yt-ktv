@@ -61,7 +61,7 @@ function HostScreenContent() {
   useEffect(() => {
     if (!roomCode) return;
 
-    const hostName = fallbackHost || room?.hostName || "Host";
+    const hostName = fallbackHost || "Host";
     const socket: Socket = connectToRoom(roomCode, hostName);
 
     socket.on("room:user-joined", ({ guestCount: count }) => {
@@ -84,7 +84,7 @@ function HostScreenContent() {
     return () => {
       socket.disconnect();
     };
-  }, [roomCode, fallbackHost, room?.hostName, loadRoom]);
+  }, [roomCode, fallbackHost, loadRoom]);
 
   async function handleSongEnded() {
     if (!roomCode) return;

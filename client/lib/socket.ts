@@ -6,10 +6,12 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
 export function connectToRoom(roomCode: string, name: string): Socket {
   const socket = io(API_URL, {
-    transports: ["websocket", "polling"],
+    transports: ["polling", "websocket"],
   });
 
-  socket.emit("room:join", { roomCode: roomCode.toUpperCase(), name });
+  socket.on("connect", () => {
+    socket.emit("room:join", { roomCode: roomCode.toUpperCase(), name });
+  });
 
   return socket;
 }
