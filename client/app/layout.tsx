@@ -18,18 +18,27 @@ export const metadata: Metadata = {
   // Used as the base for sitemap links, Open Graph, etc.
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TaraSing — Free Online Karaoke Party",
+    default: "TaraSing — Free Online Karaoke | Sing with Friends",
     template: "%s | TaraSing",
   },
   description:
-    "Host a karaoke party on the big screen. Friends join from their phones, pick YouTube songs, and sing together — no app download needed.",
+    "Free online karaoke for parties at home. Host on your TV or laptop, friends join from their phones, pick YouTube songs, and sing together — no app download needed.",
+  keywords: [
+    "online karaoke",
+    "online karaoke free",
+    "free karaoke",
+    "karaoke online",
+    "karaoke party",
+    "karaoke with friends",
+    "YouTube karaoke",
+  ],
   icons: {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "TaraSing — Free Online Karaoke Party",
+    title: "TaraSing — Free Online Karaoke | Sing with Friends",
     description:
-      "Turn any TV or laptop into a karaoke machine. Friends scan a QR code and sing along from their phones.",
+      "Free online karaoke on any TV or laptop. Friends scan a QR code, pick songs on their phones, and sing together — no app needed.",
     url: siteUrl,
     siteName: "TaraSing",
     type: "website",
@@ -37,9 +46,9 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "TaraSing — Free Online Karaoke Party",
+    title: "TaraSing — Free Online Karaoke",
     description:
-      "Host karaoke on the big screen. Friends join from their phones — no app needed.",
+      "Free online karaoke for home parties. Host on the big screen, friends join from their phones.",
   },
   alternates: {
     canonical: "/",
