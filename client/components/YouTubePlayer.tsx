@@ -88,6 +88,10 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
         width: "100%",
         playerVars: {
           autoplay: 1,
+          controls: 0, // hide YouTube control bar
+          disablekb: 1, // block keyboard shortcuts on the player
+          fs: 0, // hide fullscreen button
+          iv_load_policy: 3, // hide annotations
           rel: 0,
           modestbranding: 1,
           playsinline: 1,
