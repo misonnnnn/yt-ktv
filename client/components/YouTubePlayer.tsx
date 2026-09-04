@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 type YouTubePlayerProps = {
   videoId: string | null;
   onEnded: () => void;
+  className?: string;
 };
 
 declare global {
@@ -65,7 +66,11 @@ function loadYouTubeApi() {
   return apiReadyPromise;
 }
 
-export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) {
+export default function YouTubePlayer({
+  videoId,
+  onEnded,
+  className,
+}: YouTubePlayerProps) {
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
 
@@ -127,7 +132,9 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
   }, [videoId]);
 
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow">
+    <div
+      className={`relative overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full ${className ?? "aspect-video w-full"}`}
+    >
       {videoId ? (
         // key forces a brand-new empty div for YouTube to fill each song
         <div key={videoId} className="absolute inset-0 h-full w-full">

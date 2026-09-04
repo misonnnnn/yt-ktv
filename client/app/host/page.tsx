@@ -126,7 +126,7 @@ function HostScreenContent() {
 
   if (loading) {
     return (
-      <div className="flex min-h-full items-center justify-center bg-[#08040f] text-white/50">
+      <div className="flex h-dvh items-center justify-center bg-[#08040f] text-white/50">
         Loading host screen...
       </div>
     );
@@ -134,7 +134,7 @@ function HostScreenContent() {
 
   if (error || !roomCode) {
     return (
-      <div className="flex min-h-full flex-col items-center justify-center gap-4 bg-[#08040f] px-6 text-center">
+      <div className="flex h-dvh flex-col items-center justify-center gap-4 bg-[#08040f] px-6 text-center">
         <p className="text-red-300">{error || "Room not found"}</p>
         <a href="/create" className="text-purple-300 hover:underline">
           Create a new party
@@ -148,8 +148,8 @@ function HostScreenContent() {
   const joinUrl = getJoinUrl(roomCode);
 
   return (
-    <div className="min-h-full bg-[#08040f]">
-      <header className="flex items-center justify-between border-b border-ktv-card-border px-6 py-4 lg:px-10">
+    <div className="flex h-dvh flex-col overflow-y-auto bg-[#08040f] lg:overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between border-b border-ktv-card-border px-6 py-3 lg:px-8">
         <div>
           <h1 className="text-xl font-bold text-white lg:text-2xl">
             {partyName}
@@ -172,66 +172,66 @@ function HostScreenContent() {
         </div>
       </header>
 
-      <main className="grid grid-cols-1 gap-6 p-6 lg:grid-cols-[1fr_320px] lg:gap-8 lg:p-10 xl:grid-cols-[1fr_360px]">
-        <div className="flex flex-col gap-6">
-          <YouTubePlayer
-            videoId={nowPlaying?.videoId || null}
-            onEnded={handleSongEnded}
-          />
+      <main className="grid grid-cols-1 gap-4 p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_300px] lg:gap-6 lg:p-6 xl:grid-cols-[1fr_320px]">
+        <div className="flex flex-col gap-4 lg:min-h-0">
+          <div className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">
+            <YouTubePlayer
+              className="h-full w-full"
+              videoId={nowPlaying?.videoId || null}
+              onEnded={handleSongEnded}
+            />
+          </div>
 
-          {nowPlaying?.videoId && (
-            <div className="flex justify-end">
+          <div className="flex shrink-0 items-end justify-between gap-4 rounded-2xl border border-ktv-card-border bg-ktv-card/60 px-6 py-4 lg:px-8 lg:py-5">
+            <div className="min-w-0">
+              <p className="mb-1 text-sm font-semibold uppercase tracking-widest text-pink-400">
+                Now Singing
+              </p>
+              {nowPlaying?.videoId ? (
+                <>
+                  <p className="truncate text-3xl font-extrabold text-white lg:text-4xl">
+                    {nowPlaying.singerName}
+                  </p>
+                  <p className="mt-1 truncate text-xl font-bold text-white/90 lg:text-2xl">
+                    {nowPlaying.songTitle}
+                  </p>
+                  <p className="truncate text-white/50">{nowPlaying.artist}</p>
+                </>
+              ) : (
+                <p className="text-2xl text-white/50">Waiting for songs...</p>
+              )}
+            </div>
+            {nowPlaying?.videoId && (
               <button
                 type="button"
                 onClick={handleSkip}
                 disabled={skipping}
-                className="ktv-btn-secondary rounded-xl px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="ktv-btn-secondary shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {skipping ? "Skipping..." : "Skip Song"}
               </button>
-            </div>
-          )}
-
-          <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-6 lg:p-8">
-            <p className="mb-1 text-sm font-semibold uppercase tracking-widest text-pink-400">
-              Now Singing
-            </p>
-            {nowPlaying?.videoId ? (
-              <>
-                <p className="text-4xl font-extrabold text-white lg:text-5xl">
-                  {nowPlaying.singerName}
-                </p>
-                <p className="mt-4 text-2xl font-bold text-white/90 lg:text-3xl">
-                  {nowPlaying.songTitle}
-                </p>
-                <p className="mt-1 text-lg text-white/50 lg:text-xl">
-                  {nowPlaying.artist}
-                </p>
-              </>
-            ) : (
-              <p className="text-2xl text-white/50">Waiting for songs...</p>
             )}
           </div>
         </div>
 
-        <div className="flex flex-col gap-6">
-          <div className="flex flex-col items-center rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-6">
+        <div className="flex flex-col gap-4 pb-6 lg:min-h-0 lg:pb-0">
+          <div className="flex shrink-0 flex-col items-center rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4">
             <p className="mb-1 text-sm font-semibold uppercase tracking-wider text-purple-300">
               Scan to Join
             </p>
-            <p className="mb-4 text-xs text-white/40">
+            <p className="mb-3 text-xs text-white/40">
               Guests use their phone — no video on guest devices
             </p>
-            <div className="rounded-xl bg-white p-3">
-              <QRCodeSVG value={joinUrl} size={160} level="M" />
+            <div className="rounded-xl bg-white p-2">
+              <QRCodeSVG value={joinUrl} size={140} level="M" />
             </div>
-            <p className="mt-4 font-mono text-sm tracking-widest text-white/60">
+            <p className="mt-3 font-mono text-sm tracking-widest text-white/60">
               {roomCode}
             </p>
           </div>
 
           {showSearch ? (
-            <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4">
+            <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
               <SongSearch
                 onAddToQueue={handleAddToQueue}
                 onClose={() => setShowSearch(false)}
@@ -241,13 +241,17 @@ function HostScreenContent() {
             <button
               type="button"
               onClick={() => setShowSearch(true)}
-              className="ktv-btn-primary w-full rounded-2xl py-3 text-sm font-bold text-white"
+              className="ktv-btn-primary w-full shrink-0 rounded-2xl py-3 text-sm font-bold text-white"
             >
               + Add Song
             </button>
           )}
 
-          <Queue items={upNext} title="Up Next" />
+          {!showSearch && (
+            <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+              <Queue items={upNext} title="Up Next" />
+            </div>
+          )}
         </div>
       </main>
     </div>
@@ -258,7 +262,7 @@ export default function HostPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-full items-center justify-center bg-[#08040f] text-white/50">
+        <div className="flex h-dvh items-center justify-center bg-[#08040f] text-white/50">
           Loading host screen...
         </div>
       }
