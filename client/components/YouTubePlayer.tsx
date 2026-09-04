@@ -74,6 +74,7 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
   useEffect(() => {
     if (!videoId) return;
 
+    const currentVideoId = videoId;
     let cancelled = false;
     let player: YTPlayer | null = null;
 
@@ -83,7 +84,7 @@ export default function YouTubePlayer({ videoId, onEnded }: YouTubePlayerProps) 
 
       // YouTube replaces this div with an iframe
       player = new window.YT.Player("youtube-player-container", {
-        videoId,
+        videoId: currentVideoId,
         height: "100%",
         width: "100%",
         playerVars: {
