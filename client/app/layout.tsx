@@ -12,7 +12,18 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tarasing.online";
+// Prefer www so sitemap/canonical match your live Search Console URLs
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.tarasing.online";
+
+// Tells Google the brand name is "TaraSing" (not just the domain)
+const websiteJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  name: "TaraSing",
+  alternateName: ["TaraSing Karaoke", "tarasing.online"],
+  url: siteUrl,
+};
 
 export const metadata: Metadata = {
   // Used as the base for sitemap links, Open Graph, etc.
@@ -32,6 +43,7 @@ export const metadata: Metadata = {
     "karaoke with friends",
     "YouTube karaoke",
   ],
+  applicationName: "TaraSing",
   icons: {
     icon: "/favicon.ico",
   },
@@ -50,9 +62,12 @@ export const metadata: Metadata = {
     description:
       "Free online karaoke for home parties. Host on the big screen, friends join from their phones.",
   },
-  alternates: {
-    canonical: "/",
-  },
+};
+
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover" as const,
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -61,7 +76,13 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col text-foreground">{children}</body>
+      <body className="min-h-full flex flex-col text-foreground">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
+        />
+        {children}
+      </body>
     </html>
   );
 }

@@ -171,33 +171,38 @@ function HostScreenContent() {
   const joinUrl = getJoinUrl(roomCode);
 
   return (
-    <div className="flex h-dvh flex-col overflow-y-auto bg-[#08040f] lg:overflow-hidden">
-      <header className="flex shrink-0 items-center justify-between border-b border-ktv-card-border px-6 py-3 lg:px-8">
-        <div>
-          <h1 className="text-xl font-bold text-white lg:text-2xl">
+    <div className="flex h-dvh flex-col overflow-y-auto bg-[#08040f] landscape:overflow-hidden lg:overflow-hidden">
+      <header className="flex shrink-0 items-center justify-between border-b border-ktv-card-border px-4 py-2 landscape:py-1.5 sm:px-6 sm:py-3 lg:px-8">
+        <div className="min-w-0">
+          <h1 className="truncate text-base font-bold text-white sm:text-xl lg:text-2xl">
             {partyName}
           </h1>
-          <p className="text-sm text-white/50">Hosted by {hostName}</p>
+          <p className="hidden text-sm text-white/50 sm:block landscape:hidden lg:block">
+            Hosted by {hostName}
+          </p>
         </div>
-        <div className="flex items-center gap-6">
+        <div className="flex shrink-0 items-center gap-3 sm:gap-6">
           <div className="text-right">
-            <p className="text-xs uppercase tracking-wider text-white/40">
+            <p className="text-[10px] uppercase tracking-wider text-white/40 sm:text-xs">
               Party code
             </p>
-            <p className="font-mono text-lg font-bold tracking-widest text-purple-300">
+            <p className="font-mono text-sm font-bold tracking-widest text-purple-300 sm:text-lg">
               {roomCode}
             </p>
           </div>
-          <div className="flex items-center gap-2 rounded-xl bg-white/5 px-4 py-2">
+          <div className="flex items-center gap-2 rounded-xl bg-white/5 px-2.5 py-1.5 sm:px-4 sm:py-2">
             <span className="h-2 w-2 rounded-full bg-green-400" />
-            <span className="text-sm text-white/70">{guestCount} connected</span>
+            <span className="text-xs text-white/70 sm:text-sm">
+              {guestCount} connected
+            </span>
           </div>
         </div>
       </header>
 
-      <main className="grid grid-cols-1 gap-4 p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_300px] lg:gap-6 lg:p-6 xl:grid-cols-[1fr_320px]">
-        <div className="flex flex-col gap-4 lg:min-h-0">
-          <div className="aspect-video lg:aspect-auto lg:min-h-0 lg:flex-1">
+      {/* Side-by-side in landscape so the video fits the short height */}
+      <main className="grid grid-cols-1 gap-3 p-3 landscape:min-h-0 landscape:flex-1 landscape:grid-cols-[1fr_200px] landscape:gap-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_300px] lg:gap-6 lg:p-6 xl:grid-cols-[1fr_320px]">
+        <div className="flex min-h-0 flex-col gap-3 landscape:gap-2 sm:gap-4 lg:min-h-0">
+          <div className="aspect-video max-h-[42dvh] landscape:aspect-auto landscape:max-h-none landscape:min-h-0 landscape:flex-1 lg:aspect-auto lg:max-h-none lg:min-h-0 lg:flex-1">
             <YouTubePlayer
               ref={playerRef}
               className="h-full w-full"
@@ -206,23 +211,27 @@ function HostScreenContent() {
             />
           </div>
 
-          <div className="flex shrink-0 items-end justify-between gap-4 rounded-2xl border border-ktv-card-border bg-ktv-card/60 px-6 py-4 lg:px-8 lg:py-5">
+          <div className="flex shrink-0 items-end justify-between gap-3 rounded-2xl border border-ktv-card-border bg-ktv-card/60 px-4 py-3 landscape:px-3 landscape:py-2 sm:gap-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5">
             <div className="min-w-0">
-              <p className="mb-1 text-sm font-semibold uppercase tracking-widest text-pink-400">
+              <p className="mb-0.5 text-[10px] font-semibold uppercase tracking-widest text-pink-400 sm:mb-1 sm:text-sm">
                 Now Singing
               </p>
               {nowPlaying?.videoId ? (
                 <>
-                  <p className="truncate text-3xl font-extrabold text-white lg:text-4xl">
+                  <p className="truncate text-xl font-extrabold text-white landscape:text-lg sm:text-3xl lg:text-4xl">
                     {nowPlaying.singerName}
                   </p>
-                  <p className="mt-1 truncate text-xl font-bold text-white/90 lg:text-2xl">
+                  <p className="mt-0.5 truncate text-base font-bold text-white/90 landscape:text-sm sm:mt-1 sm:text-xl lg:text-2xl">
                     {nowPlaying.songTitle}
                   </p>
-                  <p className="truncate text-white/50">{nowPlaying.artist}</p>
+                  <p className="truncate text-sm text-white/50 landscape:text-xs">
+                    {nowPlaying.artist}
+                  </p>
                 </>
               ) : (
-                <p className="text-2xl text-white/50">Waiting for songs...</p>
+                <p className="text-lg text-white/50 sm:text-2xl">
+                  Waiting for songs...
+                </p>
               )}
             </div>
             {nowPlaying?.videoId && (
@@ -230,7 +239,7 @@ function HostScreenContent() {
                 type="button"
                 onClick={handleSkip}
                 disabled={skipping}
-                className="ktv-btn-secondary shrink-0 rounded-xl px-5 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="ktv-btn-secondary shrink-0 rounded-xl px-3 py-2 text-xs font-semibold text-white disabled:opacity-50 sm:px-5 sm:py-2.5 sm:text-sm"
               >
                 {skipping ? "Skipping..." : "Skip Song"}
               </button>
@@ -238,46 +247,63 @@ function HostScreenContent() {
           </div>
         </div>
 
-        <div className="flex flex-col gap-4 pb-6 lg:min-h-0 lg:pb-0">
-          <div className="flex shrink-0 flex-col items-center rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4">
-            <p className="mb-1 text-sm font-semibold uppercase tracking-wider text-purple-300">
+        <div className="flex min-h-0 flex-col gap-3 pb-4 landscape:gap-2 landscape:overflow-y-auto landscape:pb-0 sm:gap-4 sm:pb-6 lg:min-h-0 lg:pb-0">
+          <div className="flex shrink-0 flex-col items-center rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-3 landscape:p-2 sm:p-4">
+            <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-purple-300 sm:text-sm">
               Scan to Join
             </p>
-            <p className="mb-3 text-xs text-white/40">
+            <p className="mb-2 hidden text-xs text-white/40 sm:mb-3 landscape:hidden lg:block">
               Guests use their phone — no video on guest devices
             </p>
-            <div className="rounded-xl bg-white p-2">
-              <QRCodeSVG value={joinUrl} size={140} level="M" />
+            <div className="rounded-xl bg-white p-1.5 landscape:p-1 sm:p-2">
+              <div className="h-20 w-20 landscape:h-16 landscape:w-16 sm:h-[140px] sm:w-[140px]">
+                <QRCodeSVG
+                  value={joinUrl}
+                  size={140}
+                  level="M"
+                  className="h-full w-full"
+                />
+              </div>
             </div>
-            <p className="mt-3 font-mono text-sm tracking-widest text-white/60">
+            <p className="mt-2 font-mono text-xs tracking-widest text-white/60 sm:mt-3 sm:text-sm">
               {roomCode}
             </p>
           </div>
 
-          {showSearch ? (
-            <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              <SongSearch
-                onAddToQueue={handleAddToQueue}
-                onClose={() => setShowSearch(false)}
-              />
-            </div>
-          ) : (
-            <button
-              type="button"
-              onClick={() => setShowSearch(true)}
-              className="ktv-btn-primary w-full shrink-0 rounded-2xl py-3 text-sm font-bold text-white"
-            >
-              + Add Song
-            </button>
-          )}
+          <button
+            type="button"
+            onClick={() => setShowSearch(true)}
+            className="ktv-btn-primary w-full shrink-0 rounded-2xl py-2.5 text-sm font-bold text-white landscape:py-2"
+          >
+            + Add Song
+          </button>
 
-          {!showSearch && (
-            <div className="lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
-              <Queue items={upNext} title="Up Next" />
-            </div>
-          )}
+          <div className="landscape:min-h-0 landscape:flex-1 landscape:overflow-y-auto lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+            <Queue items={upNext} title="Up Next" />
+          </div>
         </div>
       </main>
+
+      {/* Full-screen search — roomy on phone + landscape */}
+      {showSearch && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#0c0618]">
+          <div className="flex shrink-0 items-center justify-between border-b border-ktv-card-border px-4 py-3">
+            <h2 className="text-lg font-bold text-white">Add a Song</h2>
+            <button
+              type="button"
+              onClick={() => setShowSearch(false)}
+              className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm font-medium text-white"
+            >
+              Close
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="mx-auto w-full max-w-2xl">
+              <SongSearch onAddToQueue={handleAddToQueue} />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

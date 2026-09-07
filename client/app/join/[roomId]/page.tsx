@@ -128,11 +128,11 @@ function GuestScreenContent() {
   }
 
   return (
-    <div className="ktv-bg flex min-h-full flex-1 flex-col">
-      <header className="sticky top-0 z-10 border-b border-ktv-card-border bg-[#0c0618]/90 px-4 py-4 backdrop-blur-md">
+    <div className="ktv-bg flex min-h-dvh flex-1 flex-col">
+      <header className="sticky top-0 z-10 border-b border-ktv-card-border bg-[#0c0618]/90 px-4 py-3 backdrop-blur-md landscape:py-2 sm:py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-lg font-bold text-white">
+            <h1 className="text-base font-bold text-white sm:text-lg">
               {room?.partyName || "Karaoke Party"}
             </h1>
             <div className="flex items-center gap-2">
@@ -151,18 +151,18 @@ function GuestScreenContent() {
         </div>
       </header>
 
-      <main className="flex flex-1 flex-col gap-4 px-4 py-4 pb-28">
-        <div className="rounded-2xl border border-ktv-card-border bg-gradient-to-br from-purple-900/40 to-pink-900/20 p-5">
+      <main className="flex flex-1 flex-col gap-3 px-4 py-3 pb-24 landscape:gap-2 landscape:py-2 landscape:pb-20 sm:gap-4 sm:py-4 sm:pb-28">
+        <div className="rounded-2xl border border-ktv-card-border bg-gradient-to-br from-purple-900/40 to-pink-900/20 p-4 landscape:p-3 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-pink-400">
             Now Playing
           </p>
           {nowPlaying?.videoId ? (
             <>
-              <p className="mt-1 text-2xl font-bold text-white">
+              <p className="mt-1 text-xl font-bold text-white landscape:text-lg sm:text-2xl">
                 {nowPlaying.songTitle}
               </p>
               <p className="text-sm text-white/50">{nowPlaying.artist}</p>
-              <div className="mt-3 flex items-center gap-2">
+              <div className="mt-2 flex items-center gap-2 sm:mt-3">
                 <span className="text-lg">🎤</span>
                 <span className="font-medium text-purple-300">
                   {nowPlaying.singerName}
@@ -172,7 +172,7 @@ function GuestScreenContent() {
           ) : (
             <p className="mt-2 text-white/50">Nothing playing yet</p>
           )}
-          <div className="mt-4 flex h-6 items-end gap-1">
+          <div className="mt-3 flex h-5 items-end gap-1 landscape:mt-2 landscape:h-4 sm:mt-4 sm:h-6">
             {[3, 5, 4, 6, 3, 5, 2, 4, 6, 3, 5, 4].map((h, i) => (
               <div
                 key={i}
@@ -228,7 +228,7 @@ function GuestScreenContent() {
         />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-ktv-card-border bg-[#0c0618]/95 px-4 py-3 backdrop-blur-md">
+      <div className="fixed bottom-0 left-0 right-0 border-t border-ktv-card-border bg-[#0c0618]/95 px-4 py-2.5 backdrop-blur-md landscape:py-2 sm:py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <p className="text-xs text-white/40">
             Singing as <span className="text-white/70">{guestName}</span>
@@ -236,7 +236,7 @@ function GuestScreenContent() {
           <button
             type="button"
             onClick={() => setShowSearch(true)}
-            className="ktv-btn-primary rounded-xl px-5 py-2.5 text-sm font-bold text-white"
+            className="ktv-btn-primary rounded-xl px-5 py-2 text-sm font-bold text-white landscape:py-1.5 sm:py-2.5"
           >
             + Add Song
           </button>

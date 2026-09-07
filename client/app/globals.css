@@ -26,6 +26,13 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
 }
 
+/* Fill the real phone screen height (better in landscape too) */
+html,
+body {
+  min-height: 100%;
+  min-height: 100dvh;
+}
+
 /* Subtle animated gradient background for landing */
 .ktv-bg {
   background:

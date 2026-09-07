@@ -1,6 +1,7 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://tarasing.online";
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL || "https://www.tarasing.online";
 
 // Public pages only — private room URLs stay out of the sitemap
 export default function sitemap(): MetadataRoute.Sitemap {

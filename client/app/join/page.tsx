@@ -21,8 +21,8 @@ export default function JoinPartyPage() {
   }
 
   return (
-    <div className="ktv-bg flex min-h-full flex-1 flex-col">
-      <header className="px-6 py-6">
+    <div className="ktv-bg flex min-h-dvh flex-1 flex-col">
+      <header className="px-6 py-4 landscape:py-3 sm:py-6">
         <Link
           href="/"
           className="text-sm text-white/50 transition hover:text-white/80"
@@ -31,18 +31,22 @@ export default function JoinPartyPage() {
         </Link>
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 pb-16">
-        <div className="mb-8 text-center">
-          <div className="mb-4 text-4xl">📱</div>
-          <h1 className="text-3xl font-bold text-white">Join a Party</h1>
-          <p className="mt-2 text-white/50">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 pb-10 landscape:justify-start landscape:pb-6 landscape:pt-2 sm:pb-16">
+        <div className="mb-6 text-center landscape:mb-4 sm:mb-8">
+          <div className="mb-3 text-3xl landscape:mb-2 landscape:text-2xl sm:mb-4 sm:text-4xl">
+            📱
+          </div>
+          <h1 className="text-2xl font-bold text-white landscape:text-xl sm:text-3xl">
+            Join a Party
+          </h1>
+          <p className="mt-2 text-sm text-white/50 sm:text-base">
             Enter the party code shown on the host screen.
           </p>
         </div>
 
         <form
           onSubmit={handleJoin}
-          className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-6 space-y-5"
+          className="space-y-4 rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-5 landscape:space-y-3 landscape:p-4 sm:space-y-5 sm:p-6"
         >
           <div>
             <label
@@ -80,7 +84,7 @@ export default function JoinPartyPage() {
 
           <button
             type="submit"
-            className="ktv-btn-primary w-full rounded-xl py-4 text-lg font-bold text-white"
+            className="ktv-btn-primary w-full rounded-xl py-3 text-base font-bold text-white landscape:py-2.5 sm:py-4 sm:text-lg"
           >
             Join Party
           </button>

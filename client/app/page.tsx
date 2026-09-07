@@ -1,4 +1,12 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+
+// Homepage-only canonical (do not put this in root layout)
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 const faqs = [
   {
@@ -45,43 +53,43 @@ export default function HomePage() {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
 
-      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center px-6 py-16 text-center">
+      <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center px-6 py-10 text-center landscape:py-6 sm:py-16">
         {/* Logo / branding */}
-        <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600 to-pink-500 text-4xl ktv-glow">
+        <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600 to-pink-500 text-3xl ktv-glow landscape:mb-3 landscape:h-12 landscape:w-12 sm:mb-6 sm:h-20 sm:w-20 sm:text-4xl">
           🎤
         </div>
 
-        <h1 className="mb-4 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text text-5xl font-extrabold tracking-tight text-transparent sm:text-6xl md:text-7xl">
+        <h1 className="mb-3 bg-gradient-to-r from-purple-300 via-pink-300 to-purple-300 bg-clip-text text-4xl font-extrabold tracking-tight text-transparent landscape:mb-2 landscape:text-3xl sm:mb-4 sm:text-6xl md:text-7xl">
           TaraSing
         </h1>
 
-        <p className="mb-2 text-xl font-medium text-white/80 sm:text-2xl">
+        <p className="mb-2 text-lg font-medium text-white/80 landscape:text-base sm:text-2xl">
           Free online karaoke for your next party
         </p>
 
-        <p className="mb-12 max-w-lg text-base leading-relaxed text-white/50 sm:text-lg">
+        <p className="mb-8 max-w-lg text-sm leading-relaxed text-white/50 landscape:mb-5 sm:mb-12 sm:text-lg">
           Host free online karaoke on any TV or laptop. Friends join from their
           phones, pick YouTube karaoke songs, and sing together — no app
           download needed.
         </p>
 
-        <div className="flex w-full max-w-sm flex-col gap-4 sm:max-w-none sm:flex-row sm:justify-center">
+        <div className="flex w-full max-w-sm flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center sm:gap-4">
           <Link
             href="/create"
-            className="ktv-btn-primary rounded-2xl px-8 py-4 text-lg font-bold text-white"
+            className="ktv-btn-primary rounded-2xl px-8 py-3 text-base font-bold text-white landscape:py-2.5 sm:py-4 sm:text-lg"
           >
             Create Party
           </Link>
           <Link
             href="/join"
-            className="ktv-btn-secondary rounded-2xl px-8 py-4 text-lg font-semibold text-white"
+            className="ktv-btn-secondary rounded-2xl px-8 py-3 text-base font-semibold text-white landscape:py-2.5 sm:py-4 sm:text-lg"
           >
             Join Party
           </Link>
         </div>
 
         {/* Feature hints */}
-        <div className="mt-20 grid w-full max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+        <div className="mt-12 grid w-full max-w-2xl grid-cols-1 gap-4 landscape:mt-8 sm:mt-20 sm:grid-cols-3">
           {[
             { icon: "📺", label: "Host on the big screen" },
             { icon: "📱", label: "Guests control from phones" },
@@ -98,7 +106,7 @@ export default function HomePage() {
         </div>
 
         {/* How it works — keyword-rich section for Google */}
-        <section className="mt-24 w-full max-w-2xl text-left">
+        <section className="mt-16 w-full max-w-2xl text-left landscape:mt-12 sm:mt-24">
           <h2 className="mb-3 text-center text-2xl font-bold text-white sm:text-3xl">
             How free online karaoke works
           </h2>
@@ -143,7 +151,7 @@ export default function HomePage() {
         </section>
 
         {/* FAQ — useful for "online karaoke free" type queries */}
-        <section className="mt-24 w-full max-w-2xl text-left">
+        <section className="mt-16 w-full max-w-2xl text-left landscape:mt-12 sm:mt-24">
           <h2 className="mb-3 text-center text-2xl font-bold text-white sm:text-3xl">
             Online karaoke FAQ
           </h2>

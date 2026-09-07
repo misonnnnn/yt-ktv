@@ -37,8 +37,8 @@ export default function CreatePartyPage() {
   }
 
   return (
-    <div className="ktv-bg flex min-h-full flex-1 flex-col">
-      <header className="px-6 py-6">
+    <div className="ktv-bg flex min-h-dvh flex-1 flex-col">
+      <header className="px-6 py-4 landscape:py-3 sm:py-6">
         <Link
           href="/"
           className="text-sm text-white/50 transition hover:text-white/80"
@@ -47,18 +47,22 @@ export default function CreatePartyPage() {
         </Link>
       </header>
 
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 pb-16">
-        <div className="mb-8 text-center">
-          <div className="mb-4 text-4xl">🎉</div>
-          <h1 className="text-3xl font-bold text-white">Create a Party</h1>
-          <p className="mt-2 text-white/50">
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 pb-10 landscape:justify-start landscape:pb-6 landscape:pt-2 sm:pb-16">
+        <div className="mb-6 text-center landscape:mb-4 sm:mb-8">
+          <div className="mb-3 text-3xl landscape:mb-2 landscape:text-2xl sm:mb-4 sm:text-4xl">
+            🎉
+          </div>
+          <h1 className="text-2xl font-bold text-white landscape:text-xl sm:text-3xl">
+            Create a Party
+          </h1>
+          <p className="mt-2 text-sm text-white/50 sm:text-base">
             Set up your karaoke room and share the QR code with friends.
           </p>
         </div>
 
         <form
           onSubmit={handleCreate}
-          className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-6 space-y-5"
+          className="space-y-4 rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-5 landscape:space-y-3 landscape:p-4 sm:space-y-5 sm:p-6"
         >
           {error && (
             <div className="rounded-xl bg-red-500/20 px-4 py-3 text-sm text-red-300">
@@ -103,7 +107,7 @@ export default function CreatePartyPage() {
           <button
             type="submit"
             disabled={loading}
-            className="ktv-btn-primary w-full rounded-xl py-4 text-lg font-bold text-white disabled:opacity-50"
+            className="ktv-btn-primary w-full rounded-xl py-3 text-base font-bold text-white disabled:opacity-50 landscape:py-2.5 sm:py-4 sm:text-lg"
           >
             {loading ? "Creating..." : "Create Party"}
           </button>
