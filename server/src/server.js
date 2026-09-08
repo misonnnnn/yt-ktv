@@ -10,6 +10,30 @@ const youtubeRoutes = require("./routes/youtube");
 const app = express();
 const server = http.createServer(app);
 
+/** Add both www and non-www variants of a site origin. */
+function withWwwVariants(origin) {
+  try {
+    const url = new URL(origin);
+    const host = url.hostname;
+    const variants = [url.origin];
+
+    // Skip localhost / IPs — www does not apply there
+    if (host === "localhost" || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
+      return variants;
+    }
+
+    if (host.startsWith("www.")) {
+      url.hostname = host.slice(4);
+    } else {
+      url.hostname = `www.${host}`;
+    }
+    variants.push(url.origin);
+    return variants;
+  } catch {
+    return [origin];
+  }
+}
+
 /** Normalize and collect allowed browser origins for CORS / Socket.IO. */
 function getAllowedOrigins() {
   const defaults = [
@@ -24,7 +48,8 @@ function getAllowedOrigins() {
     // Fix common mistakes like http://http://host:3000/:3000
     .map((value) => value.replace(/^http:\/\/http:\/\//i, "http://"))
     .map((value) => value.replace(/\/:(\d+)$/, ":$1"))
-    .map((value) => value.replace(/\/$/, ""));
+    .map((value) => value.replace(/\/$/, ""))
+    .flatMap(withWwwVariants);
 
   return [...new Set([...defaults, ...fromEnv])];
 }
