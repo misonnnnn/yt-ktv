@@ -28,7 +28,7 @@ export const PLAYER_SYNC_DRIFT_SECONDS = 0.35;
  * Extra seconds added when seeking while the host is playing.
  * Covers network + YouTube seek lag so the guest does not stay slightly behind.
  */
-export const PLAYER_SYNC_SEEK_LEAD_SECONDS = 0.5;
+export const PLAYER_SYNC_SEEK_LEAD_SECONDS = 0.7;
 
 export function mapYouTubeState(ytState: number): PlaybackSyncState {
   // YT.PlayerState: UNSTARTED=-1, ENDED=0, PLAYING=1, PAUSED=2, BUFFERING=3, CUED=5
