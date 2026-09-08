@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
+import GuestVideoView from "@/components/GuestVideoView";
 import Queue from "@/components/Queue";
 import SongSearch from "@/components/SongSearch";
 import {
@@ -12,6 +13,7 @@ import {
   getRoom,
   removeFromQueue,
 } from "@/lib/api";
+import { ENABLE_GUEST_VIDEO } from "@/lib/features";
 import { connectToRoom } from "@/lib/socket";
 import type { NowPlaying, QueueItem, RoomInfo, SearchResult } from "@/lib/types";
 import { toQueueItem } from "@/lib/types";
@@ -29,6 +31,7 @@ function GuestScreenContent() {
   const [addedMessage, setAddedMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [socket, setSocket] = useState<Socket | null>(null);
 
   const loadRoom = useCallback(async () => {
     if (!roomCode) return;
@@ -53,19 +56,21 @@ function GuestScreenContent() {
   useEffect(() => {
     if (!roomCode) return;
 
-    const socket: Socket = connectToRoom(roomCode, guestName);
+    const nextSocket: Socket = connectToRoom(roomCode, guestName);
+    setSocket(nextSocket);
 
-    socket.on("queue:updated", () => {
+    nextSocket.on("queue:updated", () => {
       loadRoom();
     });
 
-    socket.on("player:changed", (data: NowPlaying) => {
+    nextSocket.on("player:changed", (data: NowPlaying) => {
       setNowPlaying(data);
       loadRoom();
     });
 
     return () => {
-      socket.disconnect();
+      setSocket(null);
+      nextSocket.disconnect();
     };
   }, [roomCode, guestName, loadRoom]);
 
@@ -152,6 +157,13 @@ function GuestScreenContent() {
       </header>
 
       <main className="flex flex-1 flex-col gap-3 px-4 py-3 pb-24 landscape:gap-2 landscape:py-2 landscape:pb-20 sm:gap-4 sm:py-4 sm:pb-28">
+        {ENABLE_GUEST_VIDEO ? (
+          <GuestVideoView
+            socket={socket}
+            videoId={nowPlaying?.videoId || null}
+          />
+        ) : null}
+
         <div className="rounded-2xl border border-ktv-card-border bg-gradient-to-br from-purple-900/40 to-pink-900/20 p-4 landscape:p-3 sm:p-5">
           <p className="text-xs font-semibold uppercase tracking-wider text-pink-400">
             Now Playing
@@ -172,15 +184,17 @@ function GuestScreenContent() {
           ) : (
             <p className="mt-2 text-white/50">Nothing playing yet</p>
           )}
-          <div className="mt-3 flex h-5 items-end gap-1 landscape:mt-2 landscape:h-4 sm:mt-4 sm:h-6">
-            {[3, 5, 4, 6, 3, 5, 2, 4, 6, 3, 5, 4].map((h, i) => (
-              <div
-                key={i}
-                className="flex-1 rounded-sm bg-purple-500/50"
-                style={{ height: `${h * 4}px` }}
-              />
-            ))}
-          </div>
+          {!ENABLE_GUEST_VIDEO && (
+            <div className="mt-3 flex h-5 items-end gap-1 landscape:mt-2 landscape:h-4 sm:mt-4 sm:h-6">
+              {[3, 5, 4, 6, 3, 5, 2, 4, 6, 3, 5, 4].map((h, i) => (
+                <div
+                  key={i}
+                  className="flex-1 rounded-sm bg-purple-500/50"
+                  style={{ height: `${h * 4}px` }}
+                />
+              ))}
+            </div>
+          )}
         </div>
 
         {addedMessage && (

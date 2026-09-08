@@ -7,17 +7,34 @@ import {
   useState,
   type Ref,
 } from "react";
+import {
+  mapYouTubeState,
+  type PlaybackSyncState,
+} from "@/lib/playerSync";
 
 type YouTubePlayerProps = {
   videoId: string | null;
   onEnded: () => void;
   className?: string;
   ref?: Ref<YouTubePlayerHandle>;
+  /** Guest players stay muted so only the host TV has sound. */
+  muted?: boolean;
+  /** Called when YouTube reports a state change (for host → guest sync). */
+  onPlaybackStateChange?: (info: {
+    state: PlaybackSyncState;
+    currentTime: number;
+    videoId: string | null;
+  }) => void;
 };
 
 export type YouTubePlayerHandle = {
   play: (videoId: string) => void;
   stop: () => void;
+  pause: () => void;
+  resume: () => void;
+  seekTo: (seconds: number) => void;
+  getCurrentTime: () => number;
+  getPlaybackState: () => PlaybackSyncState;
 };
 
 declare global {
@@ -49,12 +66,18 @@ declare global {
   }
 
   interface YTPlayer {
-    loadVideoById: (videoId: string | { videoId: string; startSeconds?: number }) => void;
+    loadVideoById: (
+      videoId: string | { videoId: string; startSeconds?: number }
+    ) => void;
     playVideo: () => void;
     pauseVideo: () => void;
     stopVideo: () => void;
+    seekTo: (seconds: number, allowSeekAhead?: boolean) => void;
+    mute: () => void;
+    unMute: () => void;
     destroy: () => void;
     getPlayerState?: () => number;
+    getCurrentTime?: () => number;
   }
 }
 
@@ -92,9 +115,17 @@ export default function YouTubePlayer({
   onEnded,
   className,
   ref,
+  muted = false,
+  onPlaybackStateChange,
 }: YouTubePlayerProps) {
   const onEndedRef = useRef(onEnded);
   onEndedRef.current = onEnded;
+
+  const onPlaybackStateChangeRef = useRef(onPlaybackStateChange);
+  onPlaybackStateChangeRef.current = onPlaybackStateChange;
+
+  const mutedRef = useRef(muted);
+  mutedRef.current = muted;
 
   const hostRef = useRef<HTMLDivElement>(null);
   const playerRef = useRef<YTPlayer | null>(null);
@@ -115,6 +146,21 @@ export default function YouTubePlayer({
     }
   }
 
+  function applyMute(player: YTPlayer) {
+    if (mutedRef.current) {
+      player.mute();
+    }
+  }
+
+  function reportState(player: YTPlayer, ytState: number) {
+    const state = mapYouTubeState(ytState);
+    onPlaybackStateChangeRef.current?.({
+      state,
+      currentTime: player.getCurrentTime?.() ?? 0,
+      videoId: activeVideoIdRef.current,
+    });
+  }
+
   function loadAndPlay(id: string) {
     activeVideoIdRef.current = id;
     pendingVideoIdRef.current = id;
@@ -128,9 +174,13 @@ export default function YouTubePlayer({
     if (!player || !readyRef.current) return;
 
     player.loadVideoById({ videoId: id, startSeconds: 0 });
+    applyMute(player);
     player.playVideo();
     // Mobile browsers sometimes ignore the first playVideo() call.
-    requestAnimationFrame(() => player.playVideo());
+    requestAnimationFrame(() => {
+      applyMute(player);
+      player.playVideo();
+    });
   }
 
   function stopPlayback() {
@@ -150,6 +200,24 @@ export default function YouTubePlayer({
     },
     stop: () => {
       stopPlayback();
+    },
+    pause: () => {
+      playerRef.current?.pauseVideo();
+    },
+    resume: () => {
+      const player = playerRef.current;
+      if (!player) return;
+      applyMute(player);
+      player.playVideo();
+    },
+    seekTo: (seconds: number) => {
+      playerRef.current?.seekTo(seconds, true);
+    },
+    getCurrentTime: () => playerRef.current?.getCurrentTime?.() ?? 0,
+    getPlaybackState: () => {
+      const ytState = playerRef.current?.getPlayerState?.();
+      if (ytState == null) return "unstarted";
+      return mapYouTubeState(ytState);
     },
   }));
 
@@ -171,6 +239,8 @@ export default function YouTubePlayer({
         width: "100%",
         playerVars: {
           autoplay: 1,
+          // Muted autoplay is allowed by browsers; required for guest sync players.
+          mute: mutedRef.current ? 1 : 0,
           controls: 0,
           disablekb: 1,
           fs: 0,
@@ -185,15 +255,20 @@ export default function YouTubePlayer({
             if (cancelled) return;
             readyRef.current = true;
             playerRef.current = event.target;
+            applyMute(event.target);
             const pending = pendingVideoIdRef.current;
             if (pending) {
               event.target.loadVideoById({ videoId: pending, startSeconds: 0 });
+              applyMute(event.target);
               event.target.playVideo();
             }
           },
           onStateChange: (event) => {
             const state = event.data;
             const PlayerState = window.YT.PlayerState;
+
+            applyMute(event.target);
+            reportState(event.target, state);
 
             if (
               state === PlayerState.PLAYING ||
@@ -222,6 +297,9 @@ export default function YouTubePlayer({
               if (!pendingVideoIdRef.current && !activeVideoIdRef.current) {
                 return;
               }
+              // Guests follow the host — don't show "Tap to play" on muted sync players.
+              if (mutedRef.current) return;
+
               clearGestureTimer();
               gestureTimerRef.current = window.setTimeout(() => {
                 const current = playerRef.current?.getPlayerState?.();
@@ -279,6 +357,16 @@ export default function YouTubePlayer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [videoId]);
 
+  useEffect(() => {
+    const player = playerRef.current;
+    if (!player || !readyRef.current) return;
+    if (muted) {
+      player.mute();
+    } else {
+      player.unMute();
+    }
+  }, [muted]);
+
   function handleTapToPlay() {
     const id = activeVideoIdRef.current || pendingVideoIdRef.current || videoId;
     if (!id) return;
@@ -301,11 +389,17 @@ export default function YouTubePlayer({
         </div>
       )}
 
-      {hasVideo && needsGesture && (
+      {/* Blocks hover/clicks so YouTube controls never appear */}
+      {hasVideo && (
+        <div className="absolute inset-0 z-20" aria-hidden />
+      )}
+
+      {/* Host only: if autoplay is blocked, allow one tap above the blocker */}
+      {hasVideo && needsGesture && !muted && (
         <button
           type="button"
           onClick={handleTapToPlay}
-          className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-3 bg-black/55"
+          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/55"
         >
           <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-3xl text-black">
             ▶

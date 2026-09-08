@@ -10,14 +10,51 @@ const youtubeRoutes = require("./routes/youtube");
 const app = express();
 const server = http.createServer(app);
 
+/** Normalize and collect allowed browser origins for CORS / Socket.IO. */
+function getAllowedOrigins() {
+  const defaults = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+  ];
+
+  const fromEnv = String(process.env.CLIENT_URL || "")
+    .split(",")
+    .map((value) => value.trim())
+    .filter(Boolean)
+    // Fix common mistakes like http://http://host:3000/:3000
+    .map((value) => value.replace(/^http:\/\/http:\/\//i, "http://"))
+    .map((value) => value.replace(/\/:(\d+)$/, ":$1"))
+    .map((value) => value.replace(/\/$/, ""));
+
+  return [...new Set([...defaults, ...fromEnv])];
+}
+
+const allowedOrigins = getAllowedOrigins();
+
+function isOriginAllowed(origin) {
+  if (!origin) return true; // same-origin / non-browser tools
+  return allowedOrigins.includes(origin);
+}
+
+const corsOptions = {
+  origin(origin, callback) {
+    if (isOriginAllowed(origin)) {
+      callback(null, origin || allowedOrigins[0]);
+      return;
+    }
+    callback(new Error(`CORS blocked origin: ${origin}`));
+  },
+  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+};
+
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: allowedOrigins,
     methods: ["GET", "POST", "DELETE"],
   },
 });
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:3000" }));
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/api/youtube", youtubeRoutes);
@@ -340,6 +377,26 @@ io.on("connection", (socket) => {
     });
   });
 
+  // Host → guests: YouTube play/pause/time sync (no WebRTC)
+  socket.on("player:sync", (payload) => {
+    const code = socket.data.roomCode;
+    if (!code || !payload || typeof payload !== "object") return;
+
+    socket.to(code).emit("player:sync", {
+      videoId: payload.videoId ?? null,
+      state: payload.state || "unstarted",
+      currentTime:
+        typeof payload.currentTime === "number" ? payload.currentTime : 0,
+    });
+  });
+
+  // Guest joined mid-song — ask host to send a fresh sync snapshot
+  socket.on("player:sync-request", () => {
+    const code = socket.data.roomCode;
+    if (!code) return;
+    socket.to(code).emit("player:sync-request");
+  });
+
   socket.on("disconnect", () => {
     const code = socket.data.roomCode;
     const name = socket.data.name;
@@ -363,4 +420,5 @@ const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => {
   const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
   console.log(`Server running on http://localhost:${PORT} (${storage})`);
+  console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
 });

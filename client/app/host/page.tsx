@@ -17,6 +17,12 @@ import {
   getRoom,
   skipSong,
 } from "@/lib/api";
+import { ENABLE_GUEST_VIDEO } from "@/lib/features";
+import {
+  PLAYER_SYNC_INTERVAL_MS,
+  type PlaybackSyncState,
+  type PlayerSyncPayload,
+} from "@/lib/playerSync";
 import { connectToRoom } from "@/lib/socket";
 import type { NowPlaying, QueueItem, RoomInfo, SearchResult } from "@/lib/types";
 import { toQueueItem } from "@/lib/types";
@@ -36,10 +42,26 @@ function HostScreenContent() {
   const [skipping, setSkipping] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const playerRef = useRef<YouTubePlayerHandle>(null);
+  const socketRef = useRef<Socket | null>(null);
   const upNextRef = useRef(upNext);
   const nowPlayingRef = useRef(nowPlaying);
   upNextRef.current = upNext;
   nowPlayingRef.current = nowPlaying;
+
+  function emitPlayerSync(overrides?: Partial<PlayerSyncPayload>) {
+    if (!ENABLE_GUEST_VIDEO) return;
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    const player = playerRef.current;
+    const payload: PlayerSyncPayload = {
+      videoId: nowPlayingRef.current?.videoId ?? null,
+      state: player?.getPlaybackState() ?? "unstarted",
+      currentTime: player?.getCurrentTime() ?? 0,
+      ...overrides,
+    };
+    socket.emit("player:sync", payload);
+  }
 
   function playNextInQueue() {
     const next = upNextRef.current[0];
@@ -81,9 +103,12 @@ function HostScreenContent() {
 
     const hostName = fallbackHost || "Host";
     const socket: Socket = connectToRoom(roomCode, hostName);
+    socketRef.current = socket;
 
     socket.on("room:user-joined", ({ guestCount: count }) => {
       setGuestCount(count);
+      // New guest may need the current playhead right away
+      emitPlayerSync();
     });
 
     socket.on("room:user-left", ({ guestCount: count }) => {
@@ -99,10 +124,40 @@ function HostScreenContent() {
       loadRoom();
     });
 
+    if (ENABLE_GUEST_VIDEO) {
+      socket.on("player:sync-request", () => {
+        emitPlayerSync();
+      });
+    }
+
     return () => {
+      socketRef.current = null;
       socket.disconnect();
     };
+    // emitPlayerSync reads refs only
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, fallbackHost, loadRoom]);
+
+  // Periodically send host time so guests can correct drift
+  useEffect(() => {
+    if (!ENABLE_GUEST_VIDEO) return;
+
+    const timer = window.setInterval(() => {
+      if (!nowPlayingRef.current?.videoId) return;
+      emitPlayerSync();
+    }, PLAYER_SYNC_INTERVAL_MS);
+
+    return () => window.clearInterval(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Tell guests to clear their player when the host has nothing playing
+  useEffect(() => {
+    if (!ENABLE_GUEST_VIDEO) return;
+    if (nowPlaying?.videoId) return;
+    emitPlayerSync({ videoId: null, state: "unstarted", currentTime: 0 });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nowPlaying?.videoId]);
 
   async function handleSongEnded() {
     if (!roomCode) return;
@@ -208,6 +263,24 @@ function HostScreenContent() {
               className="h-full w-full"
               videoId={nowPlaying?.videoId || null}
               onEnded={handleSongEnded}
+              onPlaybackStateChange={
+                ENABLE_GUEST_VIDEO
+                  ? (info: {
+                      state: PlaybackSyncState;
+                      currentTime: number;
+                      videoId: string | null;
+                    }) => {
+                      emitPlayerSync({
+                        videoId:
+                          info.videoId ||
+                          nowPlayingRef.current?.videoId ||
+                          null,
+                        state: info.state,
+                        currentTime: info.currentTime,
+                      });
+                    }
+                  : undefined
+              }
             />
           </div>
 
@@ -253,7 +326,9 @@ function HostScreenContent() {
               Scan to Join
             </p>
             <p className="mb-2 hidden text-xs text-white/40 sm:mb-3 landscape:hidden lg:block">
-              Guests use their phone — no video on guest devices
+              {ENABLE_GUEST_VIDEO
+                ? "Guests see a muted copy of this video on their phones"
+                : "Guests use their phone — no video on guest devices"}
             </p>
             <div className="rounded-xl bg-white p-1.5 landscape:p-1 sm:p-2">
               <div className="h-20 w-20 landscape:h-16 landscape:w-16 sm:h-[140px] sm:w-[140px]">
