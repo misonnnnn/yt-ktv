@@ -7,6 +7,7 @@ import YouTubePlayer, {
 } from "@/components/YouTubePlayer";
 import {
   PLAYER_SYNC_DRIFT_SECONDS,
+  PLAYER_SYNC_SEEK_LEAD_SECONDS,
   type PlayerSyncPayload,
 } from "@/lib/playerSync";
 
@@ -28,6 +29,12 @@ export default function GuestVideoView({
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const videoIdRef = useRef(videoId);
   videoIdRef.current = videoId;
+  // After open/refresh/song change, always snap to host time on the next sync.
+  const forceSeekRef = useRef(true);
+
+  useEffect(() => {
+    forceSeekRef.current = true;
+  }, [videoId]);
 
   useEffect(() => {
     if (!socket) return;
@@ -46,8 +53,17 @@ export default function GuestVideoView({
       const hostTime =
         typeof payload.currentTime === "number" ? payload.currentTime : 0;
       const guestTime = player.getCurrentTime();
-      if (Math.abs(guestTime - hostTime) > PLAYER_SYNC_DRIFT_SECONDS) {
-        player.seekTo(hostTime);
+      const drift = Math.abs(guestTime - hostTime);
+      const shouldForceSeek = forceSeekRef.current;
+
+      if (shouldForceSeek || drift > PLAYER_SYNC_DRIFT_SECONDS) {
+        // When host is playing, aim a hair ahead to cover network/seek lag.
+        const target =
+          payload.state === "playing"
+            ? hostTime + PLAYER_SYNC_SEEK_LEAD_SECONDS
+            : hostTime;
+        player.seekTo(Math.max(0, target));
+        forceSeekRef.current = false;
       }
 
       // Follow host play/pause. Do not pause on "buffering" or guests get stuck.
@@ -63,12 +79,20 @@ export default function GuestVideoView({
     }
 
     socket.on("player:sync", applySync);
+    forceSeekRef.current = true;
     socket.emit("player:sync-request");
 
     return () => {
       socket.off("player:sync", applySync);
     };
   }, [socket]);
+
+  // Song already playing when guest joins/refreshes — ask host again once video is set
+  useEffect(() => {
+    if (!socket || !videoId) return;
+    forceSeekRef.current = true;
+    socket.emit("player:sync-request");
+  }, [socket, videoId]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-ktv-card-border bg-black">

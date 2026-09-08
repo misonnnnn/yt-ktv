@@ -12,11 +12,23 @@ export type PlayerSyncPayload = {
   currentTime: number;
 };
 
-/** How often the host sends its current time while a song is loaded. */
-export const PLAYER_SYNC_INTERVAL_MS = 750;
+/**
+ * How often (ms) the host broadcasts its playhead to guests.
+ * Lower = tighter sync, slightly more WebSocket traffic.
+ */
+export const PLAYER_SYNC_INTERVAL_MS = 500;
 
-/** If guest time drifts more than this (seconds), seek to match the host. */
-export const PLAYER_SYNC_DRIFT_SECONDS = 1.25;
+/**
+ * How far apart (seconds) host vs guest can be before the guest seeks.
+ * Lower = snappier catch-up after refresh/reconnect; too low can cause seek jitter.
+ */
+export const PLAYER_SYNC_DRIFT_SECONDS = 0.35;
+
+/**
+ * Extra seconds added when seeking while the host is playing.
+ * Covers network + YouTube seek lag so the guest does not stay slightly behind.
+ */
+export const PLAYER_SYNC_SEEK_LEAD_SECONDS = 0.2;
 
 export function mapYouTubeState(ytState: number): PlaybackSyncState {
   // YT.PlayerState: UNSTARTED=-1, ENDED=0, PLAYING=1, PAUSED=2, BUFFERING=3, CUED=5
