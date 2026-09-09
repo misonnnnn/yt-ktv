@@ -29,18 +29,19 @@ export const metadata: Metadata = {
   // Used as the base for sitemap links, Open Graph, etc.
   metadataBase: new URL(siteUrl),
   title: {
-    default: "TaraSing — Free Online Karaoke | Sing with Friends",
+    default:
+      "Free Online Karaoke – Sing Karaoke Online With Friends | TaraSing",
     template: "%s | TaraSing",
   },
   description:
     "Free online karaoke for parties at home. Host on your TV or laptop, friends join from their phones, pick YouTube songs, and sing together — no app download needed.",
   keywords: [
+    "free online karaoke",
     "online karaoke",
-    "online karaoke free",
-    "free karaoke",
-    "karaoke online",
-    "karaoke party",
+    "online videoke",
     "karaoke with friends",
+    "karaoke on smart TV",
+    "karaoke philippines",
     "YouTube karaoke",
   ],
   applicationName: "TaraSing",
@@ -48,7 +49,8 @@ export const metadata: Metadata = {
     icon: "/favicon.ico",
   },
   openGraph: {
-    title: "TaraSing — Free Online Karaoke | Sing with Friends",
+    title:
+      "Free Online Karaoke – Sing Karaoke Online With Friends | TaraSing",
     description:
       "Free online karaoke on any TV or laptop. Friends scan a QR code, pick songs on their phones, and sing together — no app needed.",
     url: siteUrl,
@@ -58,7 +60,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary",
-    title: "TaraSing — Free Online Karaoke",
+    title: "Free Online Karaoke | TaraSing",
     description:
       "Free online karaoke for home parties. Host on the big screen, friends join from their phones.",
   },
