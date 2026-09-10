@@ -4,6 +4,7 @@ import type {
   RoomInfo,
   SearchResult,
 } from "./types";
+import { decodeHtml } from "./decodeHtml";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -106,8 +107,8 @@ export function apiItemToNowPlaying(
   return {
     queueId: item.id,
     videoId: item.videoId,
-    songTitle: item.songTitle,
-    artist: item.artist,
+    songTitle: decodeHtml(item.songTitle),
+    artist: decodeHtml(item.artist),
     singerName: item.singerName,
     thumbnail: item.thumbnail,
   };

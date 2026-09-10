@@ -7,6 +7,22 @@ const { Server } = require("socket.io");
 const store = require("./store");
 const youtubeRoutes = require("./routes/youtube");
 
+/** Turn YouTube HTML entities (like &#39;) into normal text. */
+function decodeHtml(text) {
+  if (!text) return "";
+
+  return String(text)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    )
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 const app = express();
 const server = http.createServer(app);
 
@@ -104,8 +120,8 @@ function formatQueueRow(row, position) {
   return {
     id: row.id,
     videoId: row.video_id,
-    songTitle: row.song_title,
-    artist: row.artist,
+    songTitle: decodeHtml(row.song_title),
+    artist: decodeHtml(row.artist),
     thumbnail: row.thumbnail,
     singerName: row.singer_name,
     status: row.status,
@@ -163,8 +179,8 @@ function emitPlayerChanged(roomCode, song) {
   io.to(roomCode).emit("player:changed", {
     queueId: song.id,
     videoId: song.video_id,
-    songTitle: song.song_title,
-    artist: song.artist,
+    songTitle: decodeHtml(song.song_title),
+    artist: decodeHtml(song.artist),
     singerName: song.singer_name,
     thumbnail: song.thumbnail,
   });
@@ -274,8 +290,8 @@ app.post("/api/rooms/:roomCode/queue", async (req, res) => {
     }
 
     const videoId = String(req.body.videoId || "").trim();
-    const songTitle = String(req.body.songTitle || "").trim();
-    const artist = String(req.body.artist || "").trim();
+    const songTitle = decodeHtml(String(req.body.songTitle || "").trim());
+    const artist = decodeHtml(String(req.body.artist || "").trim());
     const thumbnail = String(req.body.thumbnail || "").trim();
     const singerName = String(req.body.singerName || "").trim();
 

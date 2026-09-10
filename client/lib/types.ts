@@ -1,3 +1,5 @@
+import { decodeHtml } from "./decodeHtml";
+
 export type QueueItem = {
   id: string;
   position: number;
@@ -49,8 +51,8 @@ export function toQueueItem(item: ApiQueueItem): QueueItem {
     id: String(item.id),
     position: item.position,
     singer: item.singerName,
-    title: item.songTitle,
-    artist: item.artist,
+    title: decodeHtml(item.songTitle),
+    artist: decodeHtml(item.artist),
     videoId: item.videoId,
     thumbnail: item.thumbnail,
     status: item.status,

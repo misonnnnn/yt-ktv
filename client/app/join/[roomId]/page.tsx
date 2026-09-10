@@ -11,7 +11,6 @@ import {
   addToQueue,
   apiItemToNowPlaying,
   getRoom,
-  removeFromQueue,
   skipSong,
 } from "@/lib/api";
 import { ENABLE_GUEST_VIDEO } from "@/lib/features";
@@ -76,12 +75,6 @@ function GuestScreenContent() {
     };
   }, [roomCode, guestName, loadRoom]);
 
-  const mySongs = queue.filter(
-    (item) =>
-      item.singer === guestName &&
-      item.status === "waiting"
-  );
-
   async function handleAddToQueue(song: SearchResult) {
     try {
       await addToQueue(roomCode, {
@@ -98,18 +91,6 @@ function GuestScreenContent() {
     } catch (err) {
       setAddedMessage(
         err instanceof Error ? err.message : "Failed to add song"
-      );
-      setTimeout(() => setAddedMessage(null), 2500);
-    }
-  }
-
-  async function handleRemoveMySong(id: string) {
-    try {
-      await removeFromQueue(roomCode, id);
-      await loadRoom();
-    } catch (err) {
-      setAddedMessage(
-        err instanceof Error ? err.message : "Failed to remove song"
       );
       setTimeout(() => setAddedMessage(null), 2500);
     }
@@ -256,16 +237,6 @@ function GuestScreenContent() {
           >
             <span>🔍</span> Search Songs
           </button>
-        )}
-
-        {mySongs.length > 0 && (
-          <Queue
-            items={mySongs.map((s, i) => ({ ...s, position: i + 1 }))}
-            title="Your Songs"
-            showRemove
-            onRemove={handleRemoveMySong}
-            compact
-          />
         )}
 
         <Queue

@@ -3,6 +3,22 @@ require("dotenv").config();
 
 const router = express.Router();
 
+/** Turn YouTube HTML entities (like &#39;) into normal text. */
+function decodeHtml(text) {
+  if (!text) return "";
+
+  return String(text)
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) =>
+      String.fromCharCode(parseInt(hex, 16))
+    )
+    .replace(/&quot;/g, '"')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
+}
+
 router.get("/search", async (req, res) => {
   const query = req.query.q + " karaoke";
 
@@ -33,8 +49,8 @@ router.get("/search", async (req, res) => {
 
     const results = (data.items || []).map((item) => ({
       videoId: item.id.videoId,
-      title: item.snippet.title,
-      channelTitle: item.snippet.channelTitle,
+      title: decodeHtml(item.snippet.title),
+      channelTitle: decodeHtml(item.snippet.channelTitle),
       thumbnail:
         item.snippet.thumbnails?.medium?.url ||
         item.snippet.thumbnails?.default?.url ||
