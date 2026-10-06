@@ -1,4 +1,5 @@
 import Link from "next/link";
+import SiteFooter from "@/components/SiteFooter";
 
 export type SeoSection = {
   heading: string;
@@ -133,13 +134,7 @@ export function SeoPage({
         </div>
       </main>
 
-      <footer className="px-6 py-8 text-center text-xs text-white/30">
-        <Link href="/" className="hover:text-white/50">
-          TaraSing
-        </Link>
-        {" — "}
-        free online karaoke for parties at home
-      </footer>
+      <SiteFooter />
     </div>
   );
 }

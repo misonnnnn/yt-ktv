@@ -20,7 +20,6 @@ type GuestVideoViewProps = {
 /**
  * Guest side: same YouTube video as the host, always muted.
  * Host is the source of truth for play/pause/time via player:sync.
- * YouTubePlayer already places a transparent overlay over the iframe.
  */
 export default function GuestVideoView({
   socket,

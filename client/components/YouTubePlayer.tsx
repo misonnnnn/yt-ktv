@@ -134,17 +134,8 @@ export default function YouTubePlayer({
   const pendingVideoIdRef = useRef<string | null>(null);
   const ignoreEndedRef = useRef(false);
   const switchingRef = useRef(false);
-  const gestureTimerRef = useRef<number | null>(null);
 
   const [hasVideo, setHasVideo] = useState(Boolean(videoId));
-  const [needsGesture, setNeedsGesture] = useState(false);
-
-  function clearGestureTimer() {
-    if (gestureTimerRef.current != null) {
-      window.clearTimeout(gestureTimerRef.current);
-      gestureTimerRef.current = null;
-    }
-  }
 
   function applyMute(player: YTPlayer) {
     if (mutedRef.current) {
@@ -167,8 +158,6 @@ export default function YouTubePlayer({
     ignoreEndedRef.current = false;
     switchingRef.current = true;
     setHasVideo(true);
-    setNeedsGesture(false);
-    clearGestureTimer();
 
     const player = playerRef.current;
     if (!player || !readyRef.current) return;
@@ -189,8 +178,6 @@ export default function YouTubePlayer({
     ignoreEndedRef.current = true;
     switchingRef.current = false;
     setHasVideo(false);
-    setNeedsGesture(false);
-    clearGestureTimer();
     playerRef.current?.stopVideo();
   }
 
@@ -241,12 +228,9 @@ export default function YouTubePlayer({
           autoplay: 1,
           // Muted autoplay is allowed by browsers; required for guest sync players.
           mute: mutedRef.current ? 1 : 0,
-          controls: 0,
-          disablekb: 1,
-          fs: 0,
-          iv_load_policy: 3,
+          // Standard YouTube chrome: controls, title/link, branding, keyboard, fullscreen.
+          controls: 1,
           rel: 0,
-          modestbranding: 1,
           playsinline: 1,
           origin: window.location.origin,
         },
@@ -275,8 +259,6 @@ export default function YouTubePlayer({
               state === PlayerState.BUFFERING
             ) {
               switchingRef.current = false;
-              setNeedsGesture(false);
-              clearGestureTimer();
               return;
             }
 
@@ -286,31 +268,6 @@ export default function YouTubePlayer({
                 return;
               }
               onEndedRef.current();
-              return;
-            }
-
-            if (
-              state === PlayerState.CUED ||
-              state === PlayerState.PAUSED ||
-              state === PlayerState.UNSTARTED
-            ) {
-              if (!pendingVideoIdRef.current && !activeVideoIdRef.current) {
-                return;
-              }
-              // Guests follow the host — don't show "Tap to play" on muted sync players.
-              if (mutedRef.current) return;
-
-              clearGestureTimer();
-              gestureTimerRef.current = window.setTimeout(() => {
-                const current = playerRef.current?.getPlayerState?.();
-                if (
-                  current === PlayerState.PLAYING ||
-                  current === PlayerState.BUFFERING
-                ) {
-                  return;
-                }
-                setNeedsGesture(true);
-              }, 400);
             }
           },
         },
@@ -330,7 +287,6 @@ export default function YouTubePlayer({
     return () => {
       cancelled = true;
       readyRef.current = false;
-      clearGestureTimer();
       try {
         player?.destroy();
       } catch {
@@ -339,7 +295,7 @@ export default function YouTubePlayer({
       playerRef.current = null;
       hostRef.current?.replaceChildren();
     };
-    // clearGestureTimer is stable enough for unmount cleanup; we only want one player.
+    // We only want one player instance for the component lifetime.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -367,18 +323,13 @@ export default function YouTubePlayer({
     }
   }, [muted]);
 
-  function handleTapToPlay() {
-    const id = activeVideoIdRef.current || pendingVideoIdRef.current || videoId;
-    if (!id) return;
-    loadAndPlay(id);
-  }
-
   return (
     <div
       className={`relative overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full ${className ?? "aspect-video w-full"}`}
     >
       <div ref={hostRef} className="absolute inset-0 h-full w-full" />
 
+      {/* Empty state only — never covers an active YouTube embed */}
       {!hasVideo && (
         <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-gradient-to-br from-zinc-900 via-zinc-800 to-zinc-900 p-8">
           <div className="text-4xl">🎤</div>
@@ -387,25 +338,6 @@ export default function YouTubePlayer({
             Add songs to the queue to get started
           </p>
         </div>
-      )}
-
-      {/* Blocks hover/clicks so YouTube controls never appear */}
-      {hasVideo && (
-        <div className="absolute inset-0 z-20" aria-hidden />
-      )}
-
-      {/* Host only: if autoplay is blocked, allow one tap above the blocker */}
-      {hasVideo && needsGesture && !muted && (
-        <button
-          type="button"
-          onClick={handleTapToPlay}
-          className="absolute inset-0 z-30 flex flex-col items-center justify-center gap-3 bg-black/55"
-        >
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/90 text-3xl text-black">
-            ▶
-          </span>
-          <span className="text-sm font-semibold text-white">Tap to play</span>
-        </button>
       )}
     </div>
   );

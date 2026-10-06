@@ -186,11 +186,12 @@ function emitPlayerChanged(roomCode, song) {
   });
 }
 
-async function advanceQueue(roomId, roomCode, finishedStatus) {
+async function advanceQueue(roomId, roomCode) {
   const playing = await store.getPlayingItem(roomId);
 
+  // Remove finished song so YouTube API metadata is not kept after playback.
   if (playing) {
-    await store.updateQueueStatus(playing.id, finishedStatus, roomId);
+    await store.deleteQueueItem(playing.id, roomId);
   }
 
   const next = await store.getNextWaitingItem(roomId);
@@ -369,7 +370,7 @@ app.post("/api/rooms/:roomCode/finish", async (req, res) => {
       return res.status(404).json({ error: "Room not found" });
     }
 
-    await advanceQueue(room.id, room.room_code, "completed");
+    await advanceQueue(room.id, room.room_code);
     res.json({ success: true });
   } catch (error) {
     console.error("Finish song error:", error);
@@ -385,7 +386,7 @@ app.post("/api/rooms/:roomCode/skip", async (req, res) => {
       return res.status(404).json({ error: "Room not found" });
     }
 
-    await advanceQueue(room.id, room.room_code, "skipped");
+    await advanceQueue(room.id, room.room_code);
     io.to(room.room_code).emit("player:skipped", { roomCode: room.room_code });
     res.json({ success: true });
   } catch (error) {
@@ -457,9 +458,28 @@ io.on("connection", (socket) => {
 });
 
 const PORT = process.env.PORT || 4000;
+const YOUTUBE_QUEUE_MAX_DAYS = 30;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+
+async function purgeOldYouTubeQueueData() {
+  try {
+    const removed = await store.deleteQueueOlderThanDays(YOUTUBE_QUEUE_MAX_DAYS);
+    if (removed > 0) {
+      console.log(
+        `Purged ${removed} YouTube queue row(s) (finished or older than ${YOUTUBE_QUEUE_MAX_DAYS} days)`
+      );
+    }
+  } catch (error) {
+    console.error("YouTube queue retention cleanup failed:", error);
+  }
+}
 
 server.listen(PORT, () => {
   const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
   console.log(`Server running on http://localhost:${PORT} (${storage})`);
   console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+  void purgeOldYouTubeQueueData();
+  setInterval(() => {
+    void purgeOldYouTubeQueueData();
+  }, ONE_DAY_MS);
 });

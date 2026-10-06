@@ -75,6 +75,17 @@ async function deleteQueueItem(queueId) {
   return true;
 }
 
+/** Remove finished/historical rows and any YouTube queue data older than 30 days. */
+async function deleteQueueOlderThanDays(days) {
+  const [result] = await pool.query(
+    `DELETE FROM queue
+     WHERE status IN ('completed', 'skipped')
+        OR created_at < DATE_SUB(NOW(), INTERVAL ? DAY)`,
+    [days]
+  );
+  return result.affectedRows || 0;
+}
+
 async function updateQueueStatus(queueId, status, _roomId) {
   await pool.query("UPDATE queue SET status = ? WHERE id = ?", [
     status,
@@ -103,6 +114,7 @@ module.exports = {
   insertQueueItem,
   getQueueItemById,
   deleteQueueItem,
+  deleteQueueOlderThanDays,
   updateQueueStatus,
   getNextWaitingItem,
 };

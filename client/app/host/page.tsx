@@ -27,10 +27,9 @@ import { connectToRoom } from "@/lib/socket";
 import type { NowPlaying, QueueItem, RoomInfo, SearchResult } from "@/lib/types";
 import { toQueueItem } from "@/lib/types";
 
-/** Phone landscape only (not desktop). Video goes fullscreen behind the UI. */
+/** Phone landscape only (not desktop). Compact side-by-side host layout. */
 const MOBILE_LANDSCAPE_QUERY =
   "(max-width: 1023px) and (orientation: landscape)";
-const CONTROLS_HIDE_MS = 4000;
 
 function HostScreenContent() {
   const searchParams = useSearchParams();
@@ -49,18 +48,12 @@ function HostScreenContent() {
   const [showQrModal, setShowQrModal] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMobileLandscape, setIsMobileLandscape] = useState(false);
-  const [showControls, setShowControls] = useState(true);
   const playerRef = useRef<YouTubePlayerHandle>(null);
   const socketRef = useRef<Socket | null>(null);
   const upNextRef = useRef(upNext);
   const nowPlayingRef = useRef(nowPlaying);
-  const hideControlsTimer = useRef<number | null>(null);
-  const showSearchRef = useRef(showSearch);
-  const showQrModalRef = useRef(showQrModal);
   upNextRef.current = upNext;
   nowPlayingRef.current = nowPlaying;
-  showSearchRef.current = showSearch;
-  showQrModalRef.current = showQrModal;
 
   // Detect phone landscape
   useEffect(() => {
@@ -74,40 +67,6 @@ function HostScreenContent() {
     media.addEventListener("change", update);
     return () => media.removeEventListener("change", update);
   }, []);
-
-  // Show overlays, then hide them after a few seconds of no touch
-  function bumpControls() {
-    setShowControls(true);
-
-    if (hideControlsTimer.current) {
-      window.clearTimeout(hideControlsTimer.current);
-    }
-
-    hideControlsTimer.current = window.setTimeout(() => {
-      // Keep UI visible while a modal/search is open
-      if (showSearchRef.current || showQrModalRef.current) return;
-      setShowControls(false);
-    }, CONTROLS_HIDE_MS);
-  }
-
-  useEffect(() => {
-    if (!isMobileLandscape) {
-      setShowControls(true);
-      if (hideControlsTimer.current) {
-        window.clearTimeout(hideControlsTimer.current);
-      }
-      return;
-    }
-
-    bumpControls();
-
-    return () => {
-      if (hideControlsTimer.current) {
-        window.clearTimeout(hideControlsTimer.current);
-      }
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isMobileLandscape]);
 
   function emitPlayerSync(overrides?: Partial<PlayerSyncPayload>) {
     if (!ENABLE_GUEST_VIDEO) return;
@@ -311,7 +270,6 @@ function HostScreenContent() {
   const partyName = room?.partyName || fallbackParty || "Karaoke Party";
   const hostName = room?.hostName || fallbackHost || "Host";
   const joinUrl = getJoinUrl(roomCode);
-  const controlsVisible = !isMobileLandscape || showControls;
 
   const player = (
     <YouTubePlayer
@@ -325,10 +283,8 @@ function HostScreenContent() {
 
   const nowSingingPanel = (
     <div
-      className={`flex shrink-0 items-end justify-between gap-3 rounded-2xl px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 ${
-        isMobileLandscape
-          ? "border border-white/15 bg-black/45 px-3 py-2 backdrop-blur-sm"
-          : "border border-ktv-card-border bg-ktv-card/60 landscape:px-3 landscape:py-2"
+      className={`flex shrink-0 items-end justify-between gap-3 rounded-2xl border border-ktv-card-border bg-ktv-card/60 px-4 py-3 sm:gap-4 sm:px-6 sm:py-4 lg:px-8 lg:py-5 ${
+        isMobileLandscape ? "px-3 py-2" : "landscape:px-3 landscape:py-2"
       }`}
     >
       <div className="min-w-0">
@@ -436,7 +392,7 @@ function HostScreenContent() {
       </button>
 
       <div className="min-h-0 flex-1 overflow-y-auto landscape:min-h-0 lg:min-h-0">
-        <Queue items={upNext} title="Up Next" glass={isMobileLandscape} compact={isMobileLandscape} />
+        <Queue items={upNext} title="Up Next" compact={isMobileLandscape} />
       </div>
     </div>
   );
@@ -445,26 +401,15 @@ function HostScreenContent() {
     <div
       className={`flex h-dvh flex-col bg-[#08040f] ${
         isMobileLandscape
-          ? "relative overflow-hidden"
+          ? "overflow-hidden"
           : "overflow-y-auto landscape:overflow-hidden lg:overflow-hidden"
       }`}
-      onPointerDown={isMobileLandscape ? bumpControls : undefined}
     >
-      {/* Fullscreen video background (phone landscape only) */}
-      {isMobileLandscape && (
-        <div className="pointer-events-none absolute inset-0 z-0">{player}</div>
-      )}
-
-      {/* UI chrome — fades away after idle in phone landscape */}
-      <div
-        className={`relative z-10 flex min-h-0 flex-1 flex-col transition-opacity duration-500 ${
-          controlsVisible ? "opacity-100" : "pointer-events-none opacity-0"
-        }`}
-      >
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header
           className={`flex shrink-0 items-center justify-between px-4 py-2 sm:px-6 sm:py-3 lg:px-8 ${
             isMobileLandscape
-              ? "border-transparent bg-gradient-to-b from-black/70 to-transparent py-1.5"
+              ? "border-b border-ktv-card-border py-1.5"
               : "border-b border-ktv-card-border landscape:py-1.5"
           }`}
         >
@@ -512,7 +457,8 @@ function HostScreenContent() {
 
         {isMobileLandscape ? (
           <main className="flex min-h-0 flex-1 gap-2 p-2">
-            <div className="flex min-w-0 flex-1 flex-col justify-end">
+            <div className="flex min-w-0 flex-1 flex-col gap-2">
+              <div className="min-h-0 flex-1">{player}</div>
               {nowSingingPanel}
             </div>
             {sidePanel}
@@ -534,10 +480,7 @@ function HostScreenContent() {
       {showQrModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
-          onClick={() => {
-            setShowQrModal(false);
-            bumpControls();
-          }}
+          onClick={() => setShowQrModal(false)}
         >
           <div
             className="rounded-2xl border border-white/15 bg-[#0c0618] p-5 text-center shadow-xl"
@@ -554,10 +497,7 @@ function HostScreenContent() {
             </p>
             <button
               type="button"
-              onClick={() => {
-                setShowQrModal(false);
-                bumpControls();
-              }}
+              onClick={() => setShowQrModal(false)}
               className="ktv-btn-secondary mt-4 rounded-xl px-4 py-2 text-sm text-white"
             >
               Close
@@ -573,10 +513,7 @@ function HostScreenContent() {
             <h2 className="text-lg font-bold text-white">Add a Song</h2>
             <button
               type="button"
-              onClick={() => {
-                setShowSearch(false);
-                if (isMobileLandscape) bumpControls();
-              }}
+              onClick={() => setShowSearch(false)}
               className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm font-medium text-white"
             >
               Close

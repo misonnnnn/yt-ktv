@@ -81,6 +81,28 @@ function deleteQueueItem(queueId, roomId) {
   return true;
 }
 
+/** Remove finished/historical rows and any YouTube queue data older than 30 days. */
+function deleteQueueOlderThanDays(days) {
+  const cutoff = Date.now() - days * 24 * 60 * 60 * 1000;
+  let removed = 0;
+
+  for (const [roomId, items] of queueByRoomId.entries()) {
+    const kept = items.filter((item) => {
+      const isFinished =
+        item.status === "completed" || item.status === "skipped";
+      const created = new Date(item.created_at).getTime();
+      if (isFinished || created < cutoff) {
+        removed += 1;
+        return false;
+      }
+      return true;
+    });
+    queueByRoomId.set(roomId, kept);
+  }
+
+  return removed;
+}
+
 function updateQueueStatus(queueId, status, roomId) {
   const items = queueByRoomId.get(roomId) || [];
   const item = items.find((entry) => entry.id === queueId);
@@ -108,6 +130,7 @@ module.exports = {
   insertQueueItem,
   getQueueItemById,
   deleteQueueItem,
+  deleteQueueOlderThanDays,
   updateQueueStatus,
   getNextWaitingItem,
 };

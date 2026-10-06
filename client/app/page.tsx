@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
   title: {
@@ -294,9 +295,7 @@ export default function HomePage() {
         </section>
       </main>
 
-      <footer className="px-6 py-8 text-center text-xs text-white/30">
-        TaraSing — free online karaoke for parties at home
-      </footer>
+      <SiteFooter />
     </div>
   );
 }
