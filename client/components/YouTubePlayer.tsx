@@ -134,13 +134,28 @@ export default function YouTubePlayer({
   const pendingVideoIdRef = useRef<string | null>(null);
   const ignoreEndedRef = useRef(false);
   const switchingRef = useRef(false);
+  const playFrameRef = useRef<number | null>(null);
+  /** Last mute value sent to this player, so we do not repeat mute/unMute. */
+  const appliedMuteRef = useRef<boolean | null>(null);
 
   const [hasVideo, setHasVideo] = useState(Boolean(videoId));
 
+  function cancelPendingPlay() {
+    if (playFrameRef.current == null) return;
+    cancelAnimationFrame(playFrameRef.current);
+    playFrameRef.current = null;
+  }
+
   function applyMute(player: YTPlayer) {
-    if (mutedRef.current) {
+    const shouldMute = mutedRef.current;
+    if (appliedMuteRef.current === shouldMute) return;
+    if (shouldMute) {
       player.mute();
+    } else if (appliedMuteRef.current === true) {
+      // Only unmute when this player was previously muted.
+      player.unMute();
     }
+    appliedMuteRef.current = shouldMute;
   }
 
   function reportState(player: YTPlayer, ytState: number) {
@@ -162,17 +177,31 @@ export default function YouTubePlayer({
     const player = playerRef.current;
     if (!player || !readyRef.current) return;
 
+    cancelPendingPlay();
     player.loadVideoById({ videoId: id, startSeconds: 0 });
     applyMute(player);
     player.playVideo();
     // Mobile browsers sometimes ignore the first playVideo() call.
-    requestAnimationFrame(() => {
-      applyMute(player);
-      player.playVideo();
+    playFrameRef.current = requestAnimationFrame(() => {
+      playFrameRef.current = null;
+      const current = playerRef.current;
+      if (!current || !readyRef.current) return;
+      applyMute(current);
+      const state = current.getPlayerState?.();
+      const PlayerState = window.YT?.PlayerState;
+      // Already starting — a second playVideo() can stall low-power TVs.
+      if (
+        PlayerState &&
+        (state === PlayerState.PLAYING || state === PlayerState.BUFFERING)
+      ) {
+        return;
+      }
+      current.playVideo();
     });
   }
 
   function stopPlayback() {
+    cancelPendingPlay();
     pendingVideoIdRef.current = null;
     activeVideoIdRef.current = null;
     ignoreEndedRef.current = true;
@@ -251,8 +280,12 @@ export default function YouTubePlayer({
             const state = event.data;
             const PlayerState = window.YT.PlayerState;
 
-            applyMute(event.target);
-            reportState(event.target, state);
+            // Buffering repeats during normal playback. Keep it for the
+            // ended-guard below, but do not notify React on every stall.
+            if (state !== PlayerState.BUFFERING) {
+              applyMute(event.target);
+              reportState(event.target, state);
+            }
 
             if (
               state === PlayerState.PLAYING ||
@@ -286,7 +319,9 @@ export default function YouTubePlayer({
 
     return () => {
       cancelled = true;
+      cancelPendingPlay();
       readyRef.current = false;
+      appliedMuteRef.current = null;
       try {
         player?.destroy();
       } catch {
@@ -316,16 +351,14 @@ export default function YouTubePlayer({
   useEffect(() => {
     const player = playerRef.current;
     if (!player || !readyRef.current) return;
-    if (muted) {
-      player.mute();
-    } else {
-      player.unMute();
-    }
+    applyMute(player);
+    // applyMute reads the latest muted flag from a ref.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [muted]);
 
   return (
     <div
-      className={`relative overflow-hidden rounded-2xl border border-ktv-card-border bg-black ktv-glow [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full ${className ?? "aspect-video w-full"}`}
+      className={`relative overflow-hidden rounded-2xl border border-ktv-card-border bg-black [&_iframe]:absolute [&_iframe]:inset-0 [&_iframe]:h-full [&_iframe]:w-full ${className ?? "aspect-video w-full"}`}
     >
       <div ref={hostRef} className="absolute inset-0 h-full w-full" />
 

@@ -54,6 +54,7 @@ export default function GuestVideoView({
       const guestTime = player.getCurrentTime();
       const drift = Math.abs(guestTime - hostTime);
       const shouldForceSeek = forceSeekRef.current;
+      const guestState = player.getPlaybackState();
 
       if (shouldForceSeek || drift > PLAYER_SYNC_DRIFT_SECONDS) {
         // When host is playing, aim a hair ahead to cover network/seek lag.
@@ -68,11 +69,20 @@ export default function GuestVideoView({
       // Follow host play/pause. Do not pause on "buffering" or guests get stuck.
       // Ignore early "paused/unstarted" while host is still at 0s — that is often
       // just autoplay not started yet; guest muted autoplay should keep going.
+      // Skip the command when the guest is already in that state.
       if (payload.state === "playing") {
-        player.resume();
+        if (guestState !== "playing" && guestState !== "buffering") {
+          player.resume();
+        }
       } else if (payload.state === "ended") {
-        player.pause();
-      } else if (payload.state === "paused" && hostTime > 0.5) {
+        if (guestState !== "paused" && guestState !== "ended") {
+          player.pause();
+        }
+      } else if (
+        payload.state === "paused" &&
+        hostTime > 0.5 &&
+        guestState !== "paused"
+      ) {
         player.pause();
       }
     }
@@ -98,7 +108,7 @@ export default function GuestVideoView({
       <div className="relative aspect-video w-full">
         <YouTubePlayer
           ref={playerRef}
-          className="h-full w-full rounded-none border-0"
+          className="ktv-glow h-full w-full rounded-none border-0"
           videoId={videoId}
           muted
           onEnded={() => {

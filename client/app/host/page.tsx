@@ -158,18 +158,19 @@ function HostScreenContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomCode, fallbackHost, loadRoom]);
 
-  // Periodically send host time so guests can correct drift
+  // Periodically send host time so guests can correct drift.
+  // No interval while the queue is empty — nothing to sync.
   useEffect(() => {
-    if (!ENABLE_GUEST_VIDEO) return;
+    if (!ENABLE_GUEST_VIDEO || !nowPlaying?.videoId) return;
 
     const timer = window.setInterval(() => {
-      if (!nowPlayingRef.current?.videoId) return;
       emitPlayerSync();
     }, PLAYER_SYNC_INTERVAL_MS);
 
     return () => window.clearInterval(timer);
+    // emitPlayerSync reads refs only
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [nowPlaying?.videoId]);
 
   // Tell guests to clear their player when the host has nothing playing
   useEffect(() => {
@@ -217,15 +218,24 @@ function HostScreenContent() {
     currentTime: number;
     videoId: string | null;
   }) {
-    setIsPlaying(info.state === "playing");
-
-    if (ENABLE_GUEST_VIDEO) {
-      emitPlayerSync({
-        videoId: info.videoId || nowPlayingRef.current?.videoId || null,
-        state: info.state,
-        currentTime: info.currentTime,
-      });
+    // Buffering and unstarted fire often while a song is already playing.
+    // Only play / pause / ended should change the button, and only when it flips.
+    if (
+      info.state === "playing" ||
+      info.state === "paused" ||
+      info.state === "ended"
+    ) {
+      const nextPlaying = info.state === "playing";
+      setIsPlaying((current) => (current === nextPlaying ? current : nextPlaying));
     }
+
+    if (!ENABLE_GUEST_VIDEO || info.state === "buffering") return;
+
+    emitPlayerSync({
+      videoId: info.videoId || nowPlayingRef.current?.videoId || null,
+      state: info.state,
+      currentTime: info.currentTime,
+    });
   }
 
   async function handleAddToQueue(song: SearchResult) {
@@ -455,25 +465,34 @@ function HostScreenContent() {
           </div>
         </header>
 
-        {isMobileLandscape ? (
-          <main className="flex min-h-0 flex-1 gap-2 p-2">
-            <div className="flex min-w-0 flex-1 flex-col gap-2">
-              <div className="min-h-0 flex-1">{player}</div>
-              {nowSingingPanel}
+        {/* One tree for both layouts so the YouTube iframe is not remounted. */}
+        <main
+          className={
+            isMobileLandscape
+              ? "flex min-h-0 flex-1 gap-2 p-2"
+              : "grid grid-cols-1 gap-3 p-3 landscape:min-h-0 landscape:flex-1 landscape:grid-cols-[1fr_300px] landscape:gap-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_340px] lg:gap-6 lg:p-6 xl:grid-cols-[1fr_360px]"
+          }
+        >
+          <div
+            className={
+              isMobileLandscape
+                ? "flex min-w-0 flex-1 flex-col gap-2"
+                : "flex min-h-0 flex-col gap-3 landscape:gap-2 sm:gap-4 lg:min-h-0"
+            }
+          >
+            <div
+              className={
+                isMobileLandscape
+                  ? "min-h-0 flex-1"
+                  : "aspect-video max-h-[42dvh] landscape:aspect-auto landscape:max-h-none landscape:min-h-0 landscape:flex-1 lg:aspect-auto lg:max-h-none lg:min-h-0 lg:flex-1"
+              }
+            >
+              {player}
             </div>
-            {sidePanel}
-          </main>
-        ) : (
-          <main className="grid grid-cols-1 gap-3 p-3 landscape:min-h-0 landscape:flex-1 landscape:grid-cols-[1fr_300px] landscape:gap-3 sm:gap-4 sm:p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[1fr_340px] lg:gap-6 lg:p-6 xl:grid-cols-[1fr_360px]">
-            <div className="flex min-h-0 flex-col gap-3 landscape:gap-2 sm:gap-4 lg:min-h-0">
-              <div className="aspect-video max-h-[42dvh] landscape:aspect-auto landscape:max-h-none landscape:min-h-0 landscape:flex-1 lg:aspect-auto lg:max-h-none lg:min-h-0 lg:flex-1">
-                {player}
-              </div>
-              {nowSingingPanel}
-            </div>
-            {sidePanel}
-          </main>
-        )}
+            {nowSingingPanel}
+          </div>
+          {sidePanel}
+        </main>
       </div>
 
       {/* QR modal — phone landscape */}
