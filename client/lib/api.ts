@@ -122,3 +122,31 @@ export function getJoinUrl(roomCode: string): string {
     process.env.NEXT_PUBLIC_CLIENT_URL || "http://localhost:3000"
   }/join/${roomCode}`;
 }
+
+export async function recordHomepageView() {
+  return request<{ success: boolean }>("/api/page-views", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: "/" }),
+  });
+}
+
+export type AdminPeriodStats = {
+  roomsCreated: number;
+  songsQueued: number;
+  homepageViews: number;
+};
+
+export type AdminStats = {
+  today: AdminPeriodStats;
+  last7Days: AdminPeriodStats;
+  last30Days: AdminPeriodStats;
+  liveConnectedRooms: number;
+  liveConnectedUsers: number;
+};
+
+export async function getAdminStats(secret: string) {
+  return request<AdminStats>("/api/admin/stats", {
+    headers: { "x-admin-secret": secret },
+  });
+}

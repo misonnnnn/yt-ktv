@@ -3,6 +3,23 @@ let nextQueueId = 1;
 
 const roomsByCode = new Map();
 const queueByRoomId = new Map();
+/** day (YYYY-MM-DD) → { rooms_created, songs_queued, homepage_views } */
+const dailyStats = new Map();
+
+function todayKey(date = new Date()) {
+  return date.toISOString().slice(0, 10);
+}
+
+function bumpDailyStat(column) {
+  const key = todayKey();
+  const row = dailyStats.get(key) || {
+    rooms_created: 0,
+    songs_queued: 0,
+    homepage_views: 0,
+  };
+  row[column] = (row[column] || 0) + 1;
+  dailyStats.set(key, row);
+}
 
 function getRoomByCode(roomCode) {
   return roomsByCode.get(roomCode.toUpperCase()) || null;
@@ -20,6 +37,7 @@ function createRoom({ roomCode, partyName, hostName }) {
 
   roomsByCode.set(roomCode.toUpperCase(), room);
   queueByRoomId.set(id, []);
+  bumpDailyStat("rooms_created");
 
   return { insertId: id, room };
 }
@@ -63,6 +81,7 @@ function insertQueueItem({
   }
 
   queueByRoomId.get(roomId).push(item);
+  bumpDailyStat("songs_queued");
   return item;
 }
 
@@ -136,6 +155,39 @@ function deleteRoomByCode(roomCode) {
   return true;
 }
 
+function recordHomepageView() {
+  bumpDailyStat("homepage_views");
+  return true;
+}
+
+function sumStatsSince(daysAgo) {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  start.setUTCDate(start.getUTCDate() - daysAgo);
+  const startKey = todayKey(start);
+
+  let roomsCreated = 0;
+  let songsQueued = 0;
+  let homepageViews = 0;
+
+  for (const [day, row] of dailyStats.entries()) {
+    if (day < startKey) continue;
+    roomsCreated += row.rooms_created || 0;
+    songsQueued += row.songs_queued || 0;
+    homepageViews += row.homepage_views || 0;
+  }
+
+  return { roomsCreated, songsQueued, homepageViews };
+}
+
+function getUsageStats() {
+  return {
+    today: sumStatsSince(0),
+    last7Days: sumStatsSince(6),
+    last30Days: sumStatsSince(29),
+  };
+}
+
 module.exports = {
   getRoomByCode,
   createRoom,
@@ -149,4 +201,6 @@ module.exports = {
   getNextWaitingItem,
   listRoomCodes,
   deleteRoomByCode,
+  recordHomepageView,
+  getUsageStats,
 };

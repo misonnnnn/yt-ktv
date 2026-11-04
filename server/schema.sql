@@ -21,3 +21,11 @@ CREATE TABLE IF NOT EXISTS queue (
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (room_id) REFERENCES rooms(id) ON DELETE CASCADE
 );
+
+-- Aggregate usage counters (kept even after rooms/queue are cleaned up)
+CREATE TABLE IF NOT EXISTS daily_stats (
+  day DATE NOT NULL PRIMARY KEY,
+  rooms_created INT NOT NULL DEFAULT 0,
+  songs_queued INT NOT NULL DEFAULT 0,
+  homepage_views INT NOT NULL DEFAULT 0
+);

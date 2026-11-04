@@ -222,22 +222,13 @@ function GuestScreenContent() {
           </div>
         )}
 
-        {showSearch ? (
-          <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/60 p-4">
-            <SongSearch
-              onAddToQueue={handleAddToQueue}
-              onClose={() => setShowSearch(false)}
-            />
-          </div>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setShowSearch(true)}
-            className="ktv-btn-secondary flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white"
-          >
-            <span>🔍</span> Search Songs
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setShowSearch(true)}
+          className="ktv-btn-secondary flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-base font-semibold text-white"
+        >
+          <span>🔍</span> Search Songs
+        </button>
 
         <Queue
           items={queue.filter((item) => item.status === "waiting")}
@@ -245,7 +236,7 @@ function GuestScreenContent() {
         />
       </main>
 
-      <div className="fixed bottom-0 left-0 right-0 border-t border-ktv-card-border bg-[#0c0618]/95 px-4 py-2.5 backdrop-blur-md landscape:py-2 sm:py-3">
+      <div className="fixed bottom-0 left-0 right-0 z-10 border-t border-ktv-card-border bg-[#0c0618]/95 px-4 py-2.5 backdrop-blur-md landscape:py-2 sm:py-3">
         <div className="mx-auto flex max-w-lg items-center justify-between gap-3">
           <p className="text-xs text-white/40">
             Singing as <span className="text-white/70">{guestName}</span>
@@ -259,6 +250,30 @@ function GuestScreenContent() {
           </button>
         </div>
       </div>
+
+      {/* Full-screen search — leaves room above the mobile keyboard */}
+      {showSearch && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#0c0618]">
+          <div className="flex shrink-0 items-center justify-between border-b border-ktv-card-border px-4 py-3">
+            <h2 className="text-lg font-bold text-white">Add a Song</h2>
+            <button
+              type="button"
+              onClick={() => setShowSearch(false)}
+              className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm font-medium text-white"
+            >
+              Close
+            </button>
+          </div>
+          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="mx-auto w-full max-w-2xl">
+              <SongSearch
+                onAddToQueue={handleAddToQueue}
+                onClose={() => setShowSearch(false)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

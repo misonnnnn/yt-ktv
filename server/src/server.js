@@ -397,6 +397,51 @@ app.post("/api/rooms/:roomCode/skip", async (req, res) => {
   }
 });
 
+// --- Lightweight usage stats ---
+
+app.post("/api/page-views", async (req, res) => {
+  try {
+    const path = String(req.body?.path || "").trim();
+    // Only count the homepage for now (keeps this simple / hard to spam other paths)
+    if (path !== "/") {
+      return res.status(400).json({ error: "Unsupported path" });
+    }
+
+    await store.recordHomepageView();
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Page view error:", error);
+    res.status(500).json({ error: "Failed to record page view" });
+  }
+});
+
+app.get("/api/admin/stats", async (req, res) => {
+  try {
+    const secret = process.env.ADMIN_SECRET;
+    if (!secret) {
+      return res.status(503).json({ error: "Admin stats are not configured" });
+    }
+
+    const provided = String(req.headers["x-admin-secret"] || "").trim();
+    if (!provided || provided !== secret) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const stats = await store.getUsageStats();
+    res.json({
+      ...stats,
+      liveConnectedRooms: roomUsers.size,
+      liveConnectedUsers: [...roomUsers.values()].reduce(
+        (sum, users) => sum + users.size,
+        0
+      ),
+    });
+  } catch (error) {
+    console.error("Admin stats error:", error);
+    res.status(500).json({ error: "Failed to load stats" });
+  }
+});
+
 // --- Socket.IO ---
 
 io.on("connection", (socket) => {

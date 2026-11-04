@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import HomeVisitBeacon from "@/components/HomeVisitBeacon";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -68,6 +69,8 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
+
+      <HomeVisitBeacon />
 
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col items-center px-6 py-10 text-center landscape:py-6 sm:py-16">
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-3xl bg-gradient-to-br from-purple-600 to-pink-500 text-3xl ktv-glow landscape:mb-3 landscape:h-12 landscape:w-12 sm:mb-6 sm:h-20 sm:w-20 sm:text-4xl">
