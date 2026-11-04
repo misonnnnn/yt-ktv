@@ -106,6 +106,19 @@ async function getNextWaitingItem(roomId) {
   return rows[0] || null;
 }
 
+async function listRoomCodes() {
+  const [rows] = await pool.query("SELECT room_code FROM rooms");
+  return rows.map((row) => String(row.room_code).toUpperCase());
+}
+
+/** Deletes the room; queue rows go with it via ON DELETE CASCADE. */
+async function deleteRoomByCode(roomCode) {
+  const [result] = await pool.query("DELETE FROM rooms WHERE room_code = ?", [
+    String(roomCode).toUpperCase(),
+  ]);
+  return (result.affectedRows || 0) > 0;
+}
+
 module.exports = {
   getRoomByCode,
   createRoom,
@@ -117,4 +130,6 @@ module.exports = {
   deleteQueueOlderThanDays,
   updateQueueStatus,
   getNextWaitingItem,
+  listRoomCodes,
+  deleteRoomByCode,
 };

@@ -102,6 +102,8 @@ app.use("/api/youtube", youtubeRoutes);
 
 // In-memory connected users per room (not stored in MySQL)
 const roomUsers = new Map();
+/** roomCode → timestamp when the room last hit 0 connected users */
+const roomEmptySince = new Map();
 
 function generateRoomCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -411,6 +413,7 @@ io.on("connection", (socket) => {
     }
 
     roomUsers.get(code).set(socket.id, socket.data.name);
+    roomEmptySince.delete(code);
     const guestCount = roomUsers.get(code).size;
 
     io.to(code).emit("room:user-joined", {
@@ -449,6 +452,9 @@ io.on("connection", (socket) => {
 
     if (roomUsers.get(code).size === 0) {
       roomUsers.delete(code);
+      if (!roomEmptySince.has(code)) {
+        roomEmptySince.set(code, Date.now());
+      }
     }
 
     const guestCount = roomUsers.has(code) ? roomUsers.get(code).size : 0;
@@ -460,6 +466,9 @@ io.on("connection", (socket) => {
 const PORT = process.env.PORT || 4000;
 const YOUTUBE_QUEUE_MAX_DAYS = 30;
 const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+const ROOM_IDLE_CLOSE_MS =
+  Number(process.env.ROOM_IDLE_HOURS || 2) * 60 * 60 * 1000;
+const ROOM_IDLE_CHECK_MS = 15 * 60 * 1000; // check every 15 minutes
 
 async function purgeOldYouTubeQueueData() {
   try {
@@ -474,12 +483,65 @@ async function purgeOldYouTubeQueueData() {
   }
 }
 
+/** Mark DB rooms with nobody connected so leftover parties can idle-close. */
+async function watchEmptyRooms() {
+  const codes = await store.listRoomCodes();
+  const now = Date.now();
+
+  for (const code of codes) {
+    if (roomUsers.has(code)) continue;
+    if (!roomEmptySince.has(code)) {
+      roomEmptySince.set(code, now);
+    }
+  }
+}
+
+/** Delete rooms that stayed at 0 connected users long enough (queue goes with room). */
+async function closeAbandonedRooms() {
+  try {
+    await watchEmptyRooms();
+
+    const now = Date.now();
+    let closed = 0;
+
+    for (const [code, emptySince] of [...roomEmptySince.entries()]) {
+      if (roomUsers.has(code)) {
+        roomEmptySince.delete(code);
+        continue;
+      }
+
+      if (now - emptySince < ROOM_IDLE_CLOSE_MS) continue;
+
+      const deleted = await store.deleteRoomByCode(code);
+      roomEmptySince.delete(code);
+      roomUsers.delete(code);
+
+      if (deleted) closed += 1;
+    }
+
+    if (closed > 0) {
+      console.log(
+        `Closed ${closed} abandoned room(s) (0 users for ${process.env.ROOM_IDLE_HOURS || 2}h)`
+      );
+    }
+  } catch (error) {
+    console.error("Abandoned room cleanup failed:", error);
+  }
+}
+
 server.listen(PORT, () => {
   const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
   console.log(`Server running on http://localhost:${PORT} (${storage})`);
   console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+  console.log(
+    `Abandoned rooms close after ${process.env.ROOM_IDLE_HOURS || 2}h with 0 users`
+  );
   void purgeOldYouTubeQueueData();
+  void closeAbandonedRooms();
   setInterval(() => {
     void purgeOldYouTubeQueueData();
   }, ONE_DAY_MS);
+  setInterval(() => {
+    void closeAbandonedRooms();
+  }, ROOM_IDLE_CHECK_MS);
 });

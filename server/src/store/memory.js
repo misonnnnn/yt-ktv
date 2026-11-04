@@ -122,6 +122,20 @@ function getNextWaitingItem(roomId) {
   );
 }
 
+function listRoomCodes() {
+  return [...roomsByCode.keys()];
+}
+
+function deleteRoomByCode(roomCode) {
+  const code = String(roomCode).toUpperCase();
+  const room = roomsByCode.get(code);
+  if (!room) return false;
+
+  roomsByCode.delete(code);
+  queueByRoomId.delete(room.id);
+  return true;
+}
+
 module.exports = {
   getRoomByCode,
   createRoom,
@@ -133,4 +147,6 @@ module.exports = {
   deleteQueueOlderThanDays,
   updateQueueStatus,
   getNextWaitingItem,
+  listRoomCodes,
+  deleteRoomByCode,
 };
