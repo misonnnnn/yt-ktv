@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import AccountMenu from "@/components/AccountMenu";
 import { createRoom } from "@/lib/api";
 
 export default function CreatePartyPage() {
@@ -38,13 +39,14 @@ export default function CreatePartyPage() {
 
   return (
     <div className="ktv-bg flex min-h-dvh flex-1 flex-col">
-      <header className="px-6 py-4 landscape:py-3 sm:py-6">
+      <header className="flex items-center justify-between px-6 py-4 landscape:py-3 sm:py-6">
         <Link
           href="/"
           className="text-sm text-white/50 transition hover:text-white/80"
         >
           ← Back to home
         </Link>
+        <AccountMenu />
       </header>
 
       <main className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center px-6 pb-10 landscape:justify-start landscape:pb-6 landscape:pt-2 sm:pb-16">

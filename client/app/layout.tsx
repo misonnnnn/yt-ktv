@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import LaunchAnnouncement from "@/components/LaunchAnnouncement";
+import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -84,8 +85,10 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd) }}
         />
-        {children}
-        <LaunchAnnouncement />
+        <AuthProvider>
+          {children}
+          <LaunchAnnouncement />
+        </AuthProvider>
       </body>
     </html>
   );

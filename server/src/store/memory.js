@@ -62,6 +62,7 @@ function insertQueueItem({
   thumbnail,
   singerName,
   status,
+  userId,
 }) {
   const id = nextQueueId++;
   const item = {
@@ -73,6 +74,7 @@ function insertQueueItem({
     thumbnail,
     singer_name: singerName,
     status,
+    user_id: userId || null,
     created_at: new Date(),
   };
 

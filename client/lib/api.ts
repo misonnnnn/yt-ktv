@@ -8,11 +8,14 @@ import { decodeHtml } from "./decodeHtml";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-async function request<T>(path: string, options?: RequestInit): Promise<T> {
+export async function apiRequest<T>(path: string, options?: RequestInit): Promise<T> {
   let response: Response;
 
   try {
-    response = await fetch(`${API_URL}${path}`, options);
+    response = await fetch(`${API_URL}${path}`, {
+      ...options,
+      credentials: "include",
+    });
   } catch {
     throw new Error("Cannot reach the server. Is it running?");
   }
@@ -27,7 +30,7 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
 }
 
 export async function createRoom(partyName: string, hostName: string) {
-  return request<{ room: RoomInfo }>("/api/rooms", {
+  return apiRequest<{ room: RoomInfo }>("/api/rooms", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ partyName, hostName }),
@@ -35,7 +38,7 @@ export async function createRoom(partyName: string, hostName: string) {
 }
 
 export async function getRoom(roomCode: string) {
-  return request<{
+  return apiRequest<{
     room: RoomInfo;
     queue: ApiQueueItem[];
     upNext: ApiQueueItem[];
@@ -44,7 +47,7 @@ export async function getRoom(roomCode: string) {
 }
 
 export async function getQueue(roomCode: string) {
-  return request<{
+  return apiRequest<{
     queue: ApiQueueItem[];
     upNext: ApiQueueItem[];
     nowPlaying: ApiQueueItem | null;
@@ -61,7 +64,7 @@ export async function addToQueue(
     singerName: string;
   }
 ) {
-  return request<{ item: ApiQueueItem }>(
+  return apiRequest<{ item: ApiQueueItem }>(
     `/api/rooms/${encodeURIComponent(roomCode)}/queue`,
     {
       method: "POST",
@@ -72,7 +75,7 @@ export async function addToQueue(
 }
 
 export async function removeFromQueue(roomCode: string, queueId: string) {
-  return request<{ success: boolean }>(
+  return apiRequest<{ success: boolean }>(
     `/api/rooms/${encodeURIComponent(roomCode)}/queue/${queueId}`,
     { method: "DELETE" }
   );
@@ -80,20 +83,20 @@ export async function removeFromQueue(roomCode: string, queueId: string) {
 
 export async function searchYouTube(query: string) {
   const params = new URLSearchParams({ q: query });
-  return request<{ results: SearchResult[] }>(
+  return apiRequest<{ results: SearchResult[] }>(
     `/api/youtube/search?${params.toString()}`
   );
 }
 
 export async function finishSong(roomCode: string) {
-  return request<{ success: boolean }>(
+  return apiRequest<{ success: boolean }>(
     `/api/rooms/${encodeURIComponent(roomCode)}/finish`,
     { method: "POST" }
   );
 }
 
 export async function skipSong(roomCode: string) {
-  return request<{ success: boolean }>(
+  return apiRequest<{ success: boolean }>(
     `/api/rooms/${encodeURIComponent(roomCode)}/skip`,
     { method: "POST" }
   );
@@ -124,7 +127,7 @@ export function getJoinUrl(roomCode: string): string {
 }
 
 export async function recordHomepageView() {
-  return request<{ success: boolean }>("/api/page-views", {
+  return apiRequest<{ success: boolean }>("/api/page-views", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ path: "/" }),
@@ -146,7 +149,7 @@ export type AdminStats = {
 };
 
 export async function getAdminStats(secret: string) {
-  return request<AdminStats>("/api/admin/stats", {
+  return apiRequest<AdminStats>("/api/admin/stats", {
     headers: { "x-admin-secret": secret },
   });
 }

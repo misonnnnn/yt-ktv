@@ -1,7 +1,10 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
+import { useAuth } from "@/components/AuthProvider";
 import { searchYouTube } from "@/lib/api";
+import { addFavorite, listFavorites, removeFavorite } from "@/lib/accountApi";
 import type { SearchResult } from "@/lib/types";
 
 const POPULAR_QUERY = "karaoke songs";
@@ -9,16 +12,28 @@ const POPULAR_LIMIT = 7;
 const SEARCH_DELAY_MS = 1000; // wait 1 second after typing stops
 
 type SongSearchProps = {
-  onAddToQueue: (song: SearchResult) => void;
+  onAddToQueue: (song: SearchResult) => void | Promise<void>;
   onClose?: () => void;
+  actionLabel?: string;
+  onFavoritesChange?: () => void;
 };
 
 function SongRow({
   song,
-  onAddToQueue,
+  onAdd,
+  adding,
+  disabled,
+  actionLabel,
+  saved,
+  onToggleSave,
 }: {
   song: SearchResult;
-  onAddToQueue: (song: SearchResult) => void;
+  onAdd: (song: SearchResult) => void;
+  adding: boolean;
+  disabled: boolean;
+  actionLabel: string;
+  saved: boolean;
+  onToggleSave: (song: SearchResult) => void;
 }) {
   return (
     <li className="flex items-center gap-3 rounded-xl border border-ktv-card-border bg-ktv-card/60 p-3">
@@ -37,18 +52,37 @@ function SongRow({
         <p className="truncate font-medium text-white">{song.title}</p>
         <p className="truncate text-sm text-white/50">{song.channelTitle}</p>
       </div>
-      <button
-        type="button"
-        onClick={() => onAddToQueue(song)}
-        className="ktv-btn-primary shrink-0 rounded-xl px-4 py-2 text-sm font-semibold text-white"
-      >
-        Add to Queue
-      </button>
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          type="button"
+          onClick={() => onToggleSave(song)}
+          aria-label={saved ? "Remove from favorites" : "Save to favorites"}
+          className={`rounded-xl px-2 py-2 text-lg ${
+            saved ? "text-pink-400" : "text-white/40 hover:text-pink-300"
+          }`}
+        >
+          {saved ? "♥" : "♡"}
+        </button>
+        <button
+          type="button"
+          onClick={() => onAdd(song)}
+          disabled={disabled}
+          className="ktv-btn-primary rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        >
+          {adding ? "Adding..." : actionLabel}
+        </button>
+      </div>
     </li>
   );
 }
 
-export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
+export default function SongSearch({
+  onAddToQueue,
+  onClose,
+  actionLabel = "Add to Queue",
+  onFavoritesChange,
+}: SongSearchProps) {
+  const { user, ready } = useAuth();
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [popularSongs, setPopularSongs] = useState<SearchResult[]>([]);
@@ -56,6 +90,9 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
   const [popularLoading, setPopularLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [hasSearched, setHasSearched] = useState(false);
+  const [addingVideoId, setAddingVideoId] = useState<string | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
+  const [accountPrompt, setAccountPrompt] = useState(false);
 
   // Load a few real karaoke videos for people who don't know what to pick
   useEffect(() => {
@@ -81,6 +118,28 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!user) {
+      setFavoriteIds(new Set());
+      return;
+    }
+
+    let cancelled = false;
+    listFavorites()
+      .then((data) => {
+        if (!cancelled) {
+          setFavoriteIds(new Set(data.songs.map((song) => song.videoId)));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setFavoriteIds(new Set());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   // Debounced search: wait 1s after the user stops typing
   useEffect(() => {
@@ -152,6 +211,47 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
     setError(null);
   }
 
+  async function handleAdd(song: SearchResult) {
+    if (addingVideoId) return;
+    setAddingVideoId(song.videoId);
+    try {
+      await onAddToQueue(song);
+    } finally {
+      setAddingVideoId(null);
+    }
+  }
+
+  async function toggleFavorite(song: SearchResult) {
+    if (!ready) return;
+    if (!user) {
+      setAccountPrompt(true);
+      return;
+    }
+
+    const saved = favoriteIds.has(song.videoId);
+    try {
+      if (saved) {
+        await removeFavorite(song.videoId);
+        setFavoriteIds((current) => {
+          const next = new Set(current);
+          next.delete(song.videoId);
+          return next;
+        });
+      } else {
+        await addFavorite({
+          videoId: song.videoId,
+          title: song.title,
+          artist: song.channelTitle,
+          thumbnail: song.thumbnail,
+        });
+        setFavoriteIds((current) => new Set(current).add(song.videoId));
+      }
+      onFavoritesChange?.();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not update favorites");
+    }
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <form onSubmit={handleSearch} className="flex items-center gap-3">
@@ -192,6 +292,36 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
         </div>
       )}
 
+      {accountPrompt && (
+        <div className="rounded-2xl border border-ktv-card-border bg-ktv-card/80 px-4 py-4">
+          <p className="text-sm leading-relaxed text-white/70">
+            Save your favorite songs, create personal playlists, and keep track
+            of your karaoke history. Create your free TaraSing account today!
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <Link
+              href="/register"
+              className="ktv-btn-primary rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            >
+              Create account
+            </Link>
+            <Link
+              href="/login"
+              className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm font-semibold text-white"
+            >
+              Sign in
+            </Link>
+            <button
+              type="button"
+              onClick={() => setAccountPrompt(false)}
+              className="rounded-xl px-3 py-2 text-sm text-white/50 hover:text-white"
+            >
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Real YouTube karaoke videos before the user searches */}
       {!hasSearched && (
         <div>
@@ -216,7 +346,12 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
               <SongRow
                 key={song.videoId}
                 song={song}
-                onAddToQueue={onAddToQueue}
+                onAdd={handleAdd}
+                adding={addingVideoId === song.videoId}
+                disabled={addingVideoId !== null}
+                actionLabel={actionLabel}
+                saved={favoriteIds.has(song.videoId)}
+                onToggleSave={toggleFavorite}
               />
             ))}
           </ul>
@@ -251,7 +386,12 @@ export default function SongSearch({ onAddToQueue, onClose }: SongSearchProps) {
                 <SongRow
                   key={song.videoId}
                   song={song}
-                  onAddToQueue={onAddToQueue}
+                  onAdd={handleAdd}
+                  adding={addingVideoId === song.videoId}
+                  disabled={addingVideoId !== null}
+                  actionLabel={actionLabel}
+                  saved={favoriteIds.has(song.videoId)}
+                  onToggleSave={toggleFavorite}
                 />
               ))}
             </ul>

@@ -5,7 +5,12 @@ const cors = require("cors");
 const http = require("http");
 const { Server } = require("socket.io");
 const store = require("./store");
+const accounts = require("./accounts");
+const { getSessionUser } = require("./httpAuth");
+const { getAllowedOrigins, isOriginAllowed } = require("./origins");
 const youtubeRoutes = require("./routes/youtube");
+const authRoutes = require("./routes/auth");
+const libraryRoutes = require("./routes/library");
 
 /** Turn YouTube HTML entities (like &#39;) into normal text. */
 function decodeHtml(text) {
@@ -26,56 +31,7 @@ function decodeHtml(text) {
 const app = express();
 const server = http.createServer(app);
 
-/** Add both www and non-www variants of a site origin. */
-function withWwwVariants(origin) {
-  try {
-    const url = new URL(origin);
-    const host = url.hostname;
-    const variants = [url.origin];
-
-    // Skip localhost / IPs — www does not apply there
-    if (host === "localhost" || /^\d{1,3}(?:\.\d{1,3}){3}$/.test(host)) {
-      return variants;
-    }
-
-    if (host.startsWith("www.")) {
-      url.hostname = host.slice(4);
-    } else {
-      url.hostname = `www.${host}`;
-    }
-    variants.push(url.origin);
-    return variants;
-  } catch {
-    return [origin];
-  }
-}
-
-/** Normalize and collect allowed browser origins for CORS / Socket.IO. */
-function getAllowedOrigins() {
-  const defaults = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000",
-  ];
-
-  const fromEnv = String(process.env.CLIENT_URL || "")
-    .split(",")
-    .map((value) => value.trim())
-    .filter(Boolean)
-    // Fix common mistakes like http://http://host:3000/:3000
-    .map((value) => value.replace(/^http:\/\/http:\/\//i, "http://"))
-    .map((value) => value.replace(/\/:(\d+)$/, ":$1"))
-    .map((value) => value.replace(/\/$/, ""))
-    .flatMap(withWwwVariants);
-
-  return [...new Set([...defaults, ...fromEnv])];
-}
-
 const allowedOrigins = getAllowedOrigins();
-
-function isOriginAllowed(origin) {
-  if (!origin) return true; // same-origin / non-browser tools
-  return allowedOrigins.includes(origin);
-}
 
 const corsOptions = {
   origin(origin, callback) {
@@ -85,7 +41,8 @@ const corsOptions = {
     }
     callback(new Error(`CORS blocked origin: ${origin}`));
   },
-  methods: ["GET", "POST", "DELETE", "OPTIONS"],
+  methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+  credentials: true,
 };
 
 const io = new Server(server, {
@@ -99,6 +56,8 @@ app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use("/api/youtube", youtubeRoutes);
+app.use("/api/auth", authRoutes);
+app.use("/api/me", libraryRoutes);
 
 // In-memory connected users per room (not stored in MySQL)
 const roomUsers = new Map();
@@ -201,6 +160,13 @@ async function advanceQueue(roomId, roomCode) {
   if (next) {
     await store.updateQueueStatus(next.id, "playing", roomId);
     emitPlayerChanged(roomCode, next);
+    // One row per request, the first time this queue item actually starts.
+    // This is the singer's party turn, not a YouTube watch-time event.
+    try {
+      await accounts.markRequestStarted(next.id);
+    } catch (error) {
+      console.error("Could not mark song request started:", error.message);
+    }
   } else {
     emitPlayerChanged(roomCode, null);
   }
@@ -237,6 +203,20 @@ app.post("/api/rooms", async (req, res) => {
       partyName,
       hostName,
     });
+
+    try {
+      const user = await getSessionUser(req);
+      if (user) {
+        await accounts.recordPartyVisit({
+          userId: user.id,
+          roomCode,
+          role: "host",
+          partyName,
+        });
+      }
+    } catch (error) {
+      console.error("Could not record hosted party:", error.message);
+    }
 
     res.status(201).json({
       room: {
@@ -307,6 +287,13 @@ app.post("/api/rooms/:roomCode/queue", async (req, res) => {
     const playing = await store.getPlayingItem(room.id);
     const status = playing ? "waiting" : "playing";
 
+    let requester = null;
+    try {
+      requester = await getSessionUser(req);
+    } catch (error) {
+      console.error("Could not read account session:", error.message);
+    }
+
     const created = await store.insertQueueItem({
       roomId: room.id,
       videoId,
@@ -315,7 +302,27 @@ app.post("/api/rooms/:roomCode/queue", async (req, res) => {
       thumbnail,
       singerName,
       status,
+      userId: requester?.id || null,
     });
+
+    if (requester) {
+      try {
+        await accounts.recordSongRequest({
+          userId: requester.id,
+          queueItemId: created.id,
+          videoId,
+          title: songTitle,
+          artist,
+          thumbnail,
+          roomCode: room.room_code,
+        });
+        if (status === "playing") {
+          await accounts.markRequestStarted(created.id);
+        }
+      } catch (error) {
+        console.error("Could not record song request:", error.message);
+      }
+    }
 
     if (status === "playing") {
       emitPlayerChanged(room.room_code, created);
@@ -526,6 +533,17 @@ async function purgeOldYouTubeQueueData() {
   } catch (error) {
     console.error("YouTube queue retention cleanup failed:", error);
   }
+
+  try {
+    const cleared = await accounts.expireYouTubeMetadata(YOUTUBE_QUEUE_MAX_DAYS);
+    if (cleared > 0) {
+      console.log(
+        `Cleared cached YouTube titles on ${cleared} saved song row(s) older than ${YOUTUBE_QUEUE_MAX_DAYS} days`
+      );
+    }
+  } catch (error) {
+    console.error("YouTube metadata retention cleanup failed:", error.message);
+  }
 }
 
 /** Mark DB rooms with nobody connected so leftover parties can idle-close. */
@@ -574,19 +592,31 @@ async function closeAbandonedRooms() {
   }
 }
 
-server.listen(PORT, () => {
-  const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
-  console.log(`Server running on http://localhost:${PORT} (${storage})`);
-  console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
-  console.log(
-    `Abandoned rooms close after ${process.env.ROOM_IDLE_HOURS || 2}h with 0 users`
-  );
-  void purgeOldYouTubeQueueData();
-  void closeAbandonedRooms();
-  setInterval(() => {
+async function start() {
+  if (store.isDatabaseEnabled()) {
+    try {
+      await accounts.ensureSchema();
+    } catch (error) {
+      console.error("Account schema setup failed:", error.message);
+    }
+  }
+
+  server.listen(PORT, () => {
+    const storage = store.isDatabaseEnabled() ? "MySQL" : "in-memory";
+    console.log(`Server running on http://localhost:${PORT} (${storage})`);
+    console.log(`CORS allowed origins: ${allowedOrigins.join(", ")}`);
+    console.log(
+      `Abandoned rooms close after ${process.env.ROOM_IDLE_HOURS || 2}h with 0 users`
+    );
     void purgeOldYouTubeQueueData();
-  }, ONE_DAY_MS);
-  setInterval(() => {
     void closeAbandonedRooms();
-  }, ROOM_IDLE_CHECK_MS);
-});
+    setInterval(() => {
+      void purgeOldYouTubeQueueData();
+    }, ONE_DAY_MS);
+    setInterval(() => {
+      void closeAbandonedRooms();
+    }, ROOM_IDLE_CHECK_MS);
+  });
+}
+
+start();

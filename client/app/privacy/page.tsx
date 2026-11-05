@@ -11,7 +11,7 @@ export const metadata: Metadata = {
 export default function PrivacyPage() {
   return (
     <LegalPage title="Privacy Policy">
-      <p>Last updated: September 30, 2026</p>
+      <p>Last updated: November 5, 2026</p>
 
       <section className="space-y-3">
         <h2 className="text-lg font-bold text-white sm:text-xl">1. Overview</h2>
@@ -49,6 +49,19 @@ export default function PrivacyPage() {
         <p>Depending on how you use TaraSing, we may process:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>
+            <span className="text-white/80">Optional account</span> — if you
+            create one: display name, email, a password hash (never the
+            password itself), an optional profile picture link, and Google&apos;s
+            account id when you use Sign in with Google. Karaoke does not
+            require an account.
+          </li>
+          <li>
+            <span className="text-white/80">Your library</span> — favorites,
+            playlists, song requests you submit while signed in, and parties you
+            host or join. We store the YouTube video id you chose, plus a short
+            cache of the title, channel name, and thumbnail address.
+          </li>
+          <li>
             <span className="text-white/80">Party details</span> — party name,
             host name, and room/party code needed to create and join a karaoke
             room.
@@ -69,8 +82,9 @@ export default function PrivacyPage() {
           </li>
         </ul>
         <p>
-          We do not require user accounts or passwords. We do not intentionally
-          collect payment information.
+          Accounts are optional. Guests can create parties, join with a QR code,
+          search songs, and add them to the queue without registering. We do not
+          intentionally collect payment information.
         </p>
       </section>
 
@@ -81,6 +95,7 @@ export default function PrivacyPage() {
         <p>We use this information to:</p>
         <ul className="list-disc space-y-2 pl-5">
           <li>Create and operate karaoke parties and song queues</li>
+          <li>Keep an optional account, favorites, and playlists when you ask us to</li>
           <li>Search YouTube and play selected videos for the party</li>
           <li>Sync playback between host and guest devices when that feature is enabled</li>
           <li>Fix errors and keep the service available</li>
@@ -117,10 +132,15 @@ export default function PrivacyPage() {
           6. Cookies and device storage
         </h2>
         <p>
-          TaraSing itself does not use first-party cookies or browser
-          localStorage/sessionStorage to track you. The embedded YouTube player
-          and YouTube/Google services may set cookies or use similar technologies
-          on your device as described in the{" "}
+          Signed-in accounts use an httpOnly session cookie so the API can tell
+          who you are. Logging out, or deleting your account, clears that
+          cookie. It does not close a karaoke party that is already running.
+          When a guest adds a song, that browser can also keep a short history
+          in localStorage (video id, title, channel, and thumbnail) so they can
+          see songs they picked on this device. That history stays on the
+          device and is separate from an account. The embedded YouTube player
+          and YouTube/Google services may set cookies or use similar
+          technologies on your device as described in the{" "}
           <a
             href="https://www.google.com/policies/privacy"
             target="_blank"
@@ -129,8 +149,8 @@ export default function PrivacyPage() {
           >
             Google Privacy Policy
           </a>
-          . Your browser may also keep ordinary temporary data needed to load
-          the website.
+          . Sign in with Google uses Google Identity Services to confirm your
+          email. TaraSing does not request YouTube account permissions.
         </p>
       </section>
 
@@ -142,7 +162,17 @@ export default function PrivacyPage() {
           YouTube video identifiers and related metadata used for the party queue
           are kept only as needed to run the party. Finished queue items are
           removed when a song ends or is skipped. We also delete stored YouTube
-          queue data that is older than 30 days.
+          queue data that is older than 30 days. Cached titles, channel names,
+          and thumbnail addresses on favorites, playlists, and your request
+          history are refreshed or removed within 30 days. The video id you
+          saved stays until you remove that song or delete your account.
+        </p>
+        <p>
+          If you delete your TaraSing account, we delete the account and the
+          personal data tied to it (profile, sessions, favorites, playlists,
+          request history, and party visit records) at that time. Songs already
+          in a live party queue can finish, but they are no longer linked to
+          your account.
         </p>
       </section>
 

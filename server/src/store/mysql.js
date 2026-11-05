@@ -76,6 +76,18 @@ async function getPlayingItem(roomId) {
   return rows[0] || null;
 }
 
+let queueUserColumn = null;
+
+async function queueHasUserColumn() {
+  if (queueUserColumn !== null) return queueUserColumn;
+  const [rows] = await pool.query(
+    `SELECT 1 FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'queue' AND COLUMN_NAME = 'user_id'`
+  );
+  queueUserColumn = rows.length > 0;
+  return queueUserColumn;
+}
+
 async function insertQueueItem({
   roomId,
   videoId,
@@ -84,12 +96,20 @@ async function insertQueueItem({
   thumbnail,
   singerName,
   status,
+  userId,
 }) {
-  const [result] = await pool.query(
-    `INSERT INTO queue (room_id, video_id, song_title, artist, thumbnail, singer_name, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-    [roomId, videoId, songTitle, artist, thumbnail, singerName, status]
-  );
+  const withUser = userId && (await queueHasUserColumn());
+  const [result] = withUser
+    ? await pool.query(
+        `INSERT INTO queue (room_id, video_id, song_title, artist, thumbnail, singer_name, status, user_id)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [roomId, videoId, songTitle, artist, thumbnail, singerName, status, userId]
+      )
+    : await pool.query(
+        `INSERT INTO queue (room_id, video_id, song_title, artist, thumbnail, singer_name, status)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [roomId, videoId, songTitle, artist, thumbnail, singerName, status]
+      );
 
   const [rows] = await pool.query("SELECT * FROM queue WHERE id = ?", [
     result.insertId,

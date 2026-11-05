@@ -8,6 +8,7 @@ import YouTubePlayer, {
   type YouTubePlayerHandle,
 } from "@/components/YouTubePlayer";
 import Queue from "@/components/Queue";
+import PartyAccountLink from "@/components/PartyAccountLink";
 import SongSearch from "@/components/SongSearch";
 import {
   addToQueue,
@@ -415,6 +416,7 @@ function HostScreenContent() {
           : "overflow-y-auto landscape:overflow-hidden lg:overflow-hidden"
       }`}
     >
+      <PartyAccountLink roomCode={roomCode} role="host" singerName={hostName} />
       <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <header
           className={`flex shrink-0 items-center justify-between px-4 py-2 sm:px-6 sm:py-3 lg:px-8 ${

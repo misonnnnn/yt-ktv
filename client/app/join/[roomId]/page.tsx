@@ -5,7 +5,9 @@ import { useParams, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import type { Socket } from "socket.io-client";
 import GuestVideoView from "@/components/GuestVideoView";
+import PartyAccountLink from "@/components/PartyAccountLink";
 import Queue from "@/components/Queue";
+import SongHistoryButton from "@/components/SongHistoryButton";
 import SongSearch from "@/components/SongSearch";
 import {
   addToQueue,
@@ -14,6 +16,7 @@ import {
   skipSong,
 } from "@/lib/api";
 import { ENABLE_GUEST_VIDEO } from "@/lib/features";
+import { readSongHistory, rememberSong, type SongHistoryItem } from "@/lib/songHistory";
 import { connectToRoom } from "@/lib/socket";
 import type { NowPlaying, QueueItem, RoomInfo, SearchResult } from "@/lib/types";
 import { toQueueItem } from "@/lib/types";
@@ -33,6 +36,11 @@ function GuestScreenContent() {
   const [loading, setLoading] = useState(true);
   const [socket, setSocket] = useState<Socket | null>(null);
   const [skipping, setSkipping] = useState(false);
+  const [songHistory, setSongHistory] = useState<SongHistoryItem[]>([]);
+
+  useEffect(() => {
+    setSongHistory(readSongHistory());
+  }, []);
 
   const loadRoom = useCallback(async () => {
     if (!roomCode) return;
@@ -84,6 +92,7 @@ function GuestScreenContent() {
         thumbnail: song.thumbnail,
         singerName: guestName,
       });
+      setSongHistory(rememberSong(song));
       setAddedMessage(`"${song.title}" added to queue!`);
       setShowSearch(false);
       setTimeout(() => setAddedMessage(null), 2500);
@@ -133,6 +142,7 @@ function GuestScreenContent() {
 
   return (
     <div className="ktv-bg flex min-h-dvh flex-1 flex-col">
+      <PartyAccountLink roomCode={roomCode} role="guest" singerName={guestName} />
       <header className="sticky top-0 z-10 border-b border-ktv-card-border bg-[#0c0618]/90 px-4 py-3 backdrop-blur-md landscape:py-2 sm:py-4">
         <div className="flex items-center justify-between">
           <div>
@@ -146,12 +156,15 @@ function GuestScreenContent() {
               </span>
             </div>
           </div>
-          <Link
-            href="/"
-            className="text-xs text-white/40 hover:text-white/70"
-          >
-            Leave
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <SongHistoryButton history={songHistory} onAdd={handleAddToQueue} />
+            <Link
+              href="/"
+              className="text-xs text-white/40 hover:text-white/70"
+            >
+              Leave
+            </Link>
+          </div>
         </div>
       </header>
 
