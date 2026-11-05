@@ -1,9 +1,10 @@
+import type { ReactNode } from "react";
 import Link from "next/link";
 import SiteFooter from "@/components/SiteFooter";
 
 export type SeoSection = {
   heading: string;
-  paragraphs: string[];
+  paragraphs: ReactNode[];
 };
 
 export type SeoFaq = {
@@ -23,6 +24,10 @@ type SeoPageProps = {
   faqs?: SeoFaq[];
   relatedLinks: SeoRelatedLink[];
   ctaLabel?: string;
+  faqHeading?: string;
+  relatedHeading?: string;
+  joinHint?: string;
+  joinLabel?: string;
 };
 
 export function SeoPage({
@@ -32,6 +37,10 @@ export function SeoPage({
   faqs,
   relatedLinks,
   ctaLabel = "Start a Free Karaoke Party",
+  faqHeading = "FAQ",
+  relatedHeading = "Explore more",
+  joinHint = "Or",
+  joinLabel = "join an existing party",
 }: SeoPageProps) {
   return (
     <div className="ktv-bg flex min-h-full flex-1 flex-col">
@@ -81,7 +90,7 @@ export function SeoPage({
           {faqs && faqs.length > 0 && (
             <section>
               <h2 className="mb-4 text-xl font-bold text-white sm:text-2xl">
-                FAQ
+                {faqHeading}
               </h2>
               <div className="space-y-3">
                 {faqs.map((faq) => (
@@ -101,7 +110,7 @@ export function SeoPage({
 
           <section>
             <h2 className="mb-4 text-xl font-bold text-white sm:text-2xl">
-              Explore more
+              {relatedHeading}
             </h2>
             <ul className="flex flex-wrap gap-x-4 gap-y-2 text-sm">
               {relatedLinks.map((link) => (
@@ -126,9 +135,9 @@ export function SeoPage({
             {ctaLabel}
           </Link>
           <p className="mt-3 text-sm text-white/40">
-            Or{" "}
+            {joinHint}{" "}
             <Link href="/join" className="text-white/60 hover:text-white/80">
-              join an existing party
+              {joinLabel}
             </Link>
           </p>
         </div>
@@ -147,6 +156,7 @@ export const SEO_LINKS: SeoRelatedLink[] = [
   { href: "/karaoke-with-friends", label: "Karaoke with friends" },
   { href: "/karaoke-on-smart-tv", label: "Karaoke on smart TV" },
   { href: "/karaoke-philippines", label: "Karaoke Philippines" },
+  { href: "/paano-mag-videoke-sa-bahay", label: "Paano mag-videoke sa bahay" },
 ];
 
 export function relatedLinksExcept(pathname: string): SeoRelatedLink[] {

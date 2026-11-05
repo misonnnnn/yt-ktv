@@ -1,7 +1,7 @@
 "use client";
 
 import { QRCodeSVG } from "qrcode.react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import type { Socket } from "socket.io-client";
 import YouTubePlayer, {
@@ -33,6 +33,7 @@ const MOBILE_LANDSCAPE_QUERY =
   "(max-width: 1023px) and (orientation: landscape)";
 
 function HostScreenContent() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const roomCode = searchParams.get("room")?.toUpperCase() || "";
   const fallbackParty = searchParams.get("party") || "";
@@ -47,6 +48,7 @@ function HostScreenContent() {
   const [skipping, setSkipping] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [showQrModal, setShowQrModal] = useState(false);
+  const [confirmLeave, setConfirmLeave] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMobileLandscape, setIsMobileLandscape] = useState(false);
   const playerRef = useRef<YouTubePlayerHandle>(null);
@@ -237,6 +239,16 @@ function HostScreenContent() {
       state: info.state,
       currentTime: info.currentTime,
     });
+  }
+
+  function requestLeave() {
+    // An empty party (just created, nobody else here) can close in one tap.
+    // A live party asks once so a mis-tap does not stop the video.
+    if (nowPlaying?.videoId || guestCount > 1) {
+      setConfirmLeave(true);
+      return;
+    }
+    router.push("/");
   }
 
   async function handleAddToQueue(song: SearchResult) {
@@ -464,6 +476,13 @@ function HostScreenContent() {
                 {guestCount} connected
               </span>
             </div>
+            <button
+              type="button"
+              onClick={requestLeave}
+              className="ktv-btn-secondary rounded-xl px-2.5 py-1.5 text-xs font-medium text-white/80 sm:px-3 sm:text-sm"
+            >
+              Leave
+            </button>
           </div>
         </header>
 
@@ -496,6 +515,43 @@ function HostScreenContent() {
           {sidePanel}
         </main>
       </div>
+
+      {confirmLeave && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+          onClick={() => setConfirmLeave(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl border border-white/15 bg-[#0c0618] p-5 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="leave-party-title"
+          >
+            <h2 id="leave-party-title" className="text-lg font-bold text-white">
+              Leave party?
+            </h2>
+            <p className="mt-2 text-sm text-white/60">
+              Playback stops on this screen.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setConfirmLeave(false)}
+                className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm text-white"
+              >
+                Stay
+              </button>
+              <button
+                type="button"
+                onClick={() => router.push("/")}
+                className="ktv-btn-primary rounded-xl px-4 py-2 text-sm font-semibold text-white"
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* QR modal — phone landscape */}
       {showQrModal && (

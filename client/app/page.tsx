@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import AccountMenu from "@/components/AccountMenu";
 import HomeVisitBeacon from "@/components/HomeVisitBeacon";
+import { SEO_LINKS } from "@/components/SeoPage";
 import SiteFooter from "@/components/SiteFooter";
 
 export const metadata: Metadata = {
@@ -282,14 +283,7 @@ export default function HomePage() {
             More ways to explore online karaoke and videoke with TaraSing.
           </p>
           <ul className="flex flex-wrap justify-center gap-x-5 gap-y-3 text-sm">
-            {[
-              { href: "/free-online-karaoke", label: "Free online karaoke" },
-              { href: "/online-karaoke", label: "Online karaoke" },
-              { href: "/online-videoke", label: "Online videoke" },
-              { href: "/karaoke-with-friends", label: "Karaoke with friends" },
-              { href: "/karaoke-on-smart-tv", label: "Karaoke on smart TV" },
-              { href: "/karaoke-philippines", label: "Karaoke Philippines" },
-            ].map((link) => (
+            {SEO_LINKS.map((link) => (
               <li key={link.href}>
                 <Link
                   href={link.href}

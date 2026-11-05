@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   relatedLinksExcept,
   SeoPage,
@@ -44,7 +45,25 @@ export default function OnlineKaraokePage() {
           heading: "Works for home nights and small gatherings",
           paragraphs: [
             "Online karaoke fits birthday parties, after-dinner hangs, and office socials where you want energy without renting equipment. Create a party, share the code, and let the playlist build itself.",
-            "If you specifically need zero cost and no downloads, see our guide to free online karaoke. Prefer the Filipino “videoke” vibe? We cover that too.",
+            <>
+              If you specifically need zero cost and no downloads, see our guide
+              to{" "}
+              <Link
+                href="/free-online-karaoke"
+                className="text-purple-300/90 underline-offset-2 hover:underline"
+              >
+                free online karaoke
+              </Link>
+              . For a home party in the Philippines, follow the Tagalog steps
+              for{" "}
+              <Link
+                href="/paano-mag-videoke-sa-bahay"
+                className="text-purple-300/90 underline-offset-2 hover:underline"
+              >
+                online karaoke sa bahay
+              </Link>
+              .
+            </>,
           ],
         },
       ]}

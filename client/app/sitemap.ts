@@ -10,6 +10,7 @@ const seoPages = [
   "/karaoke-with-friends",
   "/karaoke-on-smart-tv",
   "/karaoke-philippines",
+  "/paano-mag-videoke-sa-bahay",
 ] as const;
 
 // Public pages only — private room URLs stay out of the sitemap
