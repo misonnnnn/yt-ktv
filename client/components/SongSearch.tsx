@@ -66,23 +66,50 @@ function SongRow({
           onClick={() => onAdd(song)}
           disabled={disabled}
           aria-label={adding ? "Adding" : actionLabel}
-          className="ktv-btn-primary flex h-9 w-9 items-center justify-center rounded-xl text-white disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
+          className={`ktv-btn-primary flex h-9 w-9 items-center justify-center rounded-xl text-white sm:h-auto sm:w-auto sm:px-4 sm:py-2 ${
+            adding ? "" : "disabled:opacity-50"
+          }`}
         >
-          <svg
-            viewBox="0 0 24 24"
-            className="h-5 w-5 sm:hidden"
-            aria-hidden="true"
-          >
-            <circle
-              cx="12"
-              cy="12"
-              r="9"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="1.8"
-            />
-            <path fill="currentColor" d="M10 8.4v7.2l6.2-3.6z" />
-          </svg>
+          {adding ? (
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5 animate-spin sm:hidden"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                opacity="0.3"
+              />
+              <path
+                d="M12 3a9 9 0 0 1 9 9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                strokeLinecap="round"
+              />
+            </svg>
+          ) : (
+            <svg
+              viewBox="0 0 24 24"
+              className="h-5 w-5 sm:hidden"
+              aria-hidden="true"
+            >
+              <circle
+                cx="12"
+                cy="12"
+                r="9"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.8"
+              />
+              <path fill="currentColor" d="M10 8.4v7.2l6.2-3.6z" />
+            </svg>
+          )}
           <span className="hidden text-sm font-semibold sm:inline">
             {adding ? "Adding..." : actionLabel}
           </span>
