@@ -163,3 +163,14 @@ CREATE TABLE IF NOT EXISTS daily_stats (
   songs_queued INT NOT NULL DEFAULT 0,
   homepage_views INT NOT NULL DEFAULT 0
 );
+
+-- How often each video is added to a party queue. Rank is pick_count, highest first.
+CREATE TABLE IF NOT EXISTS song_picks (
+  video_id VARCHAR(50) NOT NULL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  artist VARCHAR(255) NOT NULL DEFAULT '',
+  thumbnail VARCHAR(500) NULL,
+  pick_count INT NOT NULL DEFAULT 0,
+  last_picked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  KEY idx_song_picks_rank (pick_count, last_picked_at)
+);

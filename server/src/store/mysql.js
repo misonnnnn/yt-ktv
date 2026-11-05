@@ -7,6 +7,12 @@ const STAT_COLUMNS = new Set([
 ]);
 
 let dailyStatsReady = false;
+let songPicksReady = false;
+const POPULAR_PAGE_SIZE = 7;
+
+function clip(value, max) {
+  return String(value || "").trim().slice(0, max);
+}
 
 async function ensureDailyStatsTable() {
   if (dailyStatsReady) return;
@@ -121,7 +127,86 @@ async function insertQueueItem({
     console.error("Failed to bump songs_queued stat:", error);
   }
 
+  try {
+    await recordSongPick({
+      videoId,
+      title: songTitle,
+      artist,
+      thumbnail,
+    });
+  } catch (error) {
+    console.error("Failed to record song pick:", error);
+  }
+
   return rows[0];
+}
+
+async function ensureSongPicksTable() {
+  if (songPicksReady) return;
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS song_picks (
+      video_id VARCHAR(50) NOT NULL PRIMARY KEY,
+      title VARCHAR(255) NOT NULL,
+      artist VARCHAR(255) NOT NULL DEFAULT '',
+      thumbnail VARCHAR(500) NULL,
+      pick_count INT NOT NULL DEFAULT 0,
+      last_picked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+      KEY idx_song_picks_rank (pick_count, last_picked_at)
+    )
+  `);
+  songPicksReady = true;
+}
+
+async function recordSongPick({ videoId, title, artist, thumbnail }) {
+  const id = clip(videoId, 50);
+  if (!id) return;
+
+  await ensureSongPicksTable();
+  await pool.query(
+    `INSERT INTO song_picks (video_id, title, artist, thumbnail, pick_count)
+     VALUES (?, ?, ?, ?, 1)
+     ON DUPLICATE KEY UPDATE
+       pick_count = pick_count + 1,
+       title = VALUES(title),
+       artist = VALUES(artist),
+       thumbnail = IF(VALUES(thumbnail) = '', thumbnail, VALUES(thumbnail))`,
+    [id, clip(title, 255), clip(artist, 255), clip(thumbnail, 500)]
+  );
+}
+
+async function listPopularSongs(page) {
+  await ensureSongPicksTable();
+
+  const [countRows] = await pool.query(
+    "SELECT COUNT(*) AS total FROM song_picks"
+  );
+  const total = Number(countRows[0].total) || 0;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / POPULAR_PAGE_SIZE);
+  const requested = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const safePage = totalPages === 0 ? 1 : Math.min(requested, totalPages);
+  const offset = (safePage - 1) * POPULAR_PAGE_SIZE;
+
+  const [rows] = await pool.query(
+    `SELECT video_id, title, artist, thumbnail, pick_count
+     FROM song_picks
+     ORDER BY pick_count DESC, last_picked_at DESC
+     LIMIT ? OFFSET ?`,
+    [POPULAR_PAGE_SIZE, offset]
+  );
+
+  return {
+    songs: rows.map((row) => ({
+      videoId: row.video_id,
+      title: row.title,
+      channelTitle: row.artist,
+      thumbnail: row.thumbnail || "",
+      pickCount: Number(row.pick_count) || 0,
+    })),
+    page: safePage,
+    pageSize: POPULAR_PAGE_SIZE,
+    total,
+    totalPages,
+  };
 }
 
 async function recordHomepageView() {
@@ -229,4 +314,5 @@ module.exports = {
   deleteRoomByCode,
   recordHomepageView,
   getUsageStats,
+  listPopularSongs,
 };

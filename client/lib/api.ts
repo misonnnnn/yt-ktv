@@ -88,6 +88,21 @@ export async function searchYouTube(query: string) {
   );
 }
 
+export async function listPopularSongs(page = 1, pageToken?: string | null) {
+  const params = new URLSearchParams({ page: String(page) });
+  if (pageToken) params.set("pageToken", pageToken);
+  return apiRequest<{
+    source: "youtube" | "picks";
+    songs: SearchResult[];
+    page: number;
+    pageSize: number;
+    total: number;
+    totalPages: number;
+    nextPageToken: string | null;
+    prevPageToken: string | null;
+  }>(`/api/youtube/popular?${params.toString()}`);
+}
+
 export async function finishSong(roomCode: string) {
   return apiRequest<{ success: boolean }>(
     `/api/rooms/${encodeURIComponent(roomCode)}/finish`,

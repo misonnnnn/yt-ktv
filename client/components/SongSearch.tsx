@@ -3,12 +3,10 @@
 import { FormEvent, useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
-import { searchYouTube } from "@/lib/api";
+import { listPopularSongs, searchYouTube } from "@/lib/api";
 import { addFavorite, listFavorites, removeFavorite } from "@/lib/accountApi";
 import type { SearchResult } from "@/lib/types";
 
-const POPULAR_QUERY = "karaoke songs";
-const POPULAR_LIMIT = 7;
 const SEARCH_DELAY_MS = 1000; // wait 1 second after typing stops
 
 type SongSearchProps = {
@@ -67,9 +65,27 @@ function SongRow({
           type="button"
           onClick={() => onAdd(song)}
           disabled={disabled}
-          className="ktv-btn-primary rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          aria-label={adding ? "Adding" : actionLabel}
+          className="ktv-btn-primary flex h-9 w-9 items-center justify-center rounded-xl text-white disabled:opacity-50 sm:h-auto sm:w-auto sm:px-4 sm:py-2"
         >
-          {adding ? "Adding..." : actionLabel}
+          <svg
+            viewBox="0 0 24 24"
+            className="h-5 w-5 sm:hidden"
+            aria-hidden="true"
+          >
+            <circle
+              cx="12"
+              cy="12"
+              r="9"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.8"
+            />
+            <path fill="currentColor" d="M10 8.4v7.2l6.2-3.6z" />
+          </svg>
+          <span className="hidden text-sm font-semibold sm:inline">
+            {adding ? "Adding..." : actionLabel}
+          </span>
         </button>
       </div>
     </li>
@@ -86,6 +102,14 @@ export default function SongSearch({
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResult[]>([]);
   const [popularSongs, setPopularSongs] = useState<SearchResult[]>([]);
+  const [popularPage, setPopularPage] = useState(1);
+  const [popularToken, setPopularToken] = useState<string | null>(null);
+  const [nextPageToken, setNextPageToken] = useState<string | null>(null);
+  const [prevPageToken, setPrevPageToken] = useState<string | null>(null);
+  const [popularSource, setPopularSource] = useState<"youtube" | "picks">("youtube");
+  const [popularTotalPages, setPopularTotalPages] = useState(0);
+  const [popularRefresh, setPopularRefresh] = useState(0);
+  const [popularError, setPopularError] = useState(false);
   const [loading, setLoading] = useState(false);
   const [popularLoading, setPopularLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -94,20 +118,33 @@ export default function SongSearch({
   const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
   const [accountPrompt, setAccountPrompt] = useState(false);
 
-  // Load a few real karaoke videos for people who don't know what to pick
+  // Server chooses the list: YouTube search, or songs people queued.
   useEffect(() => {
     let cancelled = false;
 
     async function loadPopular() {
       setPopularLoading(true);
+      setPopularError(false);
       try {
-        const data = await searchYouTube(POPULAR_QUERY);
+        const data = await listPopularSongs(popularPage, popularToken);
         if (!cancelled) {
-          setPopularSongs(data.results.slice(0, POPULAR_LIMIT));
+          setPopularSongs(data.songs);
+          setPopularTotalPages(data.totalPages);
+          setNextPageToken(data.nextPageToken);
+          setPrevPageToken(data.prevPageToken);
+          setPopularSource(data.source);
+          if (data.source === "picks" && data.page !== popularPage) {
+            setPopularPage(data.page);
+          }
         }
       } catch {
-        // Popular list is optional — search still works if this fails
-        if (!cancelled) setPopularSongs([]);
+        if (!cancelled) {
+          setPopularSongs([]);
+          setPopularTotalPages(0);
+          setNextPageToken(null);
+          setPrevPageToken(null);
+          setPopularError(true);
+        }
       } finally {
         if (!cancelled) setPopularLoading(false);
       }
@@ -117,7 +154,7 @@ export default function SongSearch({
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [popularPage, popularToken, popularRefresh]);
 
   useEffect(() => {
     if (!user) {
@@ -216,6 +253,9 @@ export default function SongSearch({
     setAddingVideoId(song.videoId);
     try {
       await onAddToQueue(song);
+      if (popularSource === "picks") {
+        setPopularRefresh((current) => current + 1);
+      }
     } finally {
       setAddingVideoId(null);
     }
@@ -251,6 +291,13 @@ export default function SongSearch({
       setError(err instanceof Error ? err.message : "Could not update favorites");
     }
   }
+
+  const canGoPopularPrev =
+    popularSource === "picks" ? popularPage > 1 : Boolean(prevPageToken);
+  const canGoPopularNext =
+    popularSource === "picks"
+      ? popularTotalPages > popularPage
+      : Boolean(nextPageToken);
 
   return (
     <div className="flex flex-col gap-4">
@@ -322,39 +369,84 @@ export default function SongSearch({
         </div>
       )}
 
-      {/* Real YouTube karaoke videos before the user searches */}
       {!hasSearched && (
         <div>
           <p className="mb-3 text-sm text-white/50">
             Not sure what to sing? Try one of these:
           </p>
 
-          {popularLoading && (
+          {popularLoading && popularSongs.length === 0 && (
             <p className="py-6 text-center text-sm text-white/40">
               Loading popular songs...
             </p>
           )}
 
-          {!popularLoading && popularSongs.length === 0 && (
+          {!popularLoading && popularError && (
             <p className="py-6 text-center text-sm text-white/40">
-              Could not load suggestions. Search for a song above.
+              Could not load popular songs. Search for a song above.
             </p>
           )}
 
-          <ul className="space-y-3">
-            {popularSongs.map((song) => (
-              <SongRow
-                key={song.videoId}
-                song={song}
-                onAdd={handleAdd}
-                adding={addingVideoId === song.videoId}
-                disabled={addingVideoId !== null}
-                actionLabel={actionLabel}
-                saved={favoriteIds.has(song.videoId)}
-                onToggleSave={toggleFavorite}
-              />
-            ))}
-          </ul>
+          {!popularLoading && !popularError && popularSongs.length === 0 && (
+            <p className="py-6 text-center text-sm text-white/40">
+              {popularSource === "picks"
+                ? "Nothing here yet. Songs show up after someone adds them to a party."
+                : "No songs found. Search for a song above."}
+            </p>
+          )}
+
+          {!popularError && popularSongs.length > 0 && (
+            <ul className="space-y-3">
+              {popularSongs.map((song) => (
+                <SongRow
+                  key={song.videoId}
+                  song={song}
+                  onAdd={handleAdd}
+                  adding={addingVideoId === song.videoId}
+                  disabled={addingVideoId !== null}
+                  actionLabel={actionLabel}
+                  saved={favoriteIds.has(song.videoId)}
+                  onToggleSave={toggleFavorite}
+                />
+              ))}
+            </ul>
+          )}
+
+          {!popularError && (canGoPopularPrev || canGoPopularNext) && (
+            <div className="flex items-center justify-between gap-3 pt-2">
+              <button
+                type="button"
+                disabled={!canGoPopularPrev || popularLoading}
+                onClick={() => {
+                  setPopularLoading(true);
+                  setPopularSongs([]);
+                  setPopularToken(prevPageToken);
+                  setPopularPage((current) => Math.max(1, current - 1));
+                }}
+                className="ktv-btn-secondary rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                Previous
+              </button>
+              <span className="text-sm font-medium text-white/70">
+                {popularTotalPages > 1
+                  ? `${popularPage} / ${popularTotalPages}`
+                  : `Page ${popularPage}`}
+              </span>
+              <button
+                type="button"
+                disabled={!canGoPopularNext || popularLoading}
+                onClick={() => {
+                  setPopularLoading(true);
+                  setPopularSongs([]);
+                  setPopularToken(nextPageToken);
+                  setPopularPage((current) => current + 1);
+                }}
+                className="ktv-btn-primary rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-40"
+              >
+                Next
+              </button>
+            </div>
+          )}
         </div>
       )}
 

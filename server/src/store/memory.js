@@ -5,6 +5,13 @@ const roomsByCode = new Map();
 const queueByRoomId = new Map();
 /** day (YYYY-MM-DD) → { rooms_created, songs_queued, homepage_views } */
 const dailyStats = new Map();
+/** videoId → { video_id, title, artist, thumbnail, pick_count, last_picked_at } */
+const songPicks = new Map();
+const POPULAR_PAGE_SIZE = 7;
+
+function clip(value, max) {
+  return String(value || "").trim().slice(0, max);
+}
 
 function todayKey(date = new Date()) {
   return date.toISOString().slice(0, 10);
@@ -84,7 +91,65 @@ function insertQueueItem({
 
   queueByRoomId.get(roomId).push(item);
   bumpDailyStat("songs_queued");
+  recordSongPick({
+    videoId,
+    title: songTitle,
+    artist,
+    thumbnail,
+  });
   return item;
+}
+
+function recordSongPick({ videoId, title, artist, thumbnail }) {
+  const id = clip(videoId, 50);
+  if (!id) return;
+
+  const existing = songPicks.get(id);
+  if (existing) {
+    existing.pick_count += 1;
+    existing.title = clip(title, 255) || existing.title;
+    existing.artist = clip(artist, 255);
+    const nextThumbnail = clip(thumbnail, 500);
+    if (nextThumbnail) existing.thumbnail = nextThumbnail;
+    existing.last_picked_at = new Date();
+    return;
+  }
+
+  songPicks.set(id, {
+    video_id: id,
+    title: clip(title, 255),
+    artist: clip(artist, 255),
+    thumbnail: clip(thumbnail, 500),
+    pick_count: 1,
+    last_picked_at: new Date(),
+  });
+}
+
+function listPopularSongs(page) {
+  const ranked = [...songPicks.values()].sort((a, b) => {
+    if (b.pick_count !== a.pick_count) return b.pick_count - a.pick_count;
+    return b.last_picked_at - a.last_picked_at;
+  });
+
+  const total = ranked.length;
+  const totalPages = total === 0 ? 0 : Math.ceil(total / POPULAR_PAGE_SIZE);
+  const requested = Number.isFinite(page) && page > 0 ? Math.floor(page) : 1;
+  const safePage = totalPages === 0 ? 1 : Math.min(requested, totalPages);
+  const offset = (safePage - 1) * POPULAR_PAGE_SIZE;
+
+  return {
+    songs: ranked.slice(offset, offset + POPULAR_PAGE_SIZE).map((row) => ({
+      videoId: row.video_id,
+      title: row.title,
+      channelTitle: row.artist,
+      thumbnail: row.thumbnail || "",
+      pickCount: row.pick_count,
+    })),
+    page: safePage,
+    pageSize: POPULAR_PAGE_SIZE,
+    total,
+    totalPages,
+  };
 }
 
 function getQueueItemById(queueId, roomId) {
@@ -205,4 +270,5 @@ module.exports = {
   deleteRoomByCode,
   recordHomepageView,
   getUsageStats,
+  listPopularSongs,
 };
