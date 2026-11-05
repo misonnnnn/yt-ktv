@@ -18,6 +18,7 @@ const {
   rejectBadOrigin,
   startSession,
   endSession,
+  clearSessionCookie,
   requireAccounts,
 } = require("../httpAuth");
 const { sendMail, appBaseUrl, mailIsConfigured } = require("../mailer");
@@ -195,7 +196,7 @@ router.post("/login", async (req, res) => {
       });
     }
 
-    await startSession(res, user.id);
+    await startSession(req, res, user.id);
     res.json({ user: accounts.publicUser(user) });
   } catch (error) {
     console.error("Login error:", error.message);
@@ -207,20 +208,13 @@ router.post("/logout", async (req, res) => {
   try {
     if (rejectBadOrigin(req, res)) return;
     if (isDatabaseEnabled()) await endSession(req, res);
-    else clearCookieOnly(res);
+    else clearSessionCookie(req, res);
     res.json({ success: true });
   } catch (error) {
     console.error("Logout error:", error.message);
     res.status(500).json({ error: "Could not sign out" });
   }
 });
-
-function clearCookieOnly(res) {
-  res.setHeader(
-    "Set-Cookie",
-    "tara_session=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax"
-  );
-}
 
 router.get("/me", async (req, res) => {
   try {
@@ -280,7 +274,7 @@ router.post("/google", async (req, res) => {
 
     const bySub = await accounts.findUserByProvider("google", profile.sub);
     if (bySub) {
-      await startSession(res, bySub.id);
+      await startSession(req, res, bySub.id);
       return res.json({ user: accounts.publicUser(bySub) });
     }
 
@@ -293,7 +287,7 @@ router.post("/google", async (req, res) => {
         });
       }
       await accounts.linkProvider(byEmail.id, "google", profile.sub);
-      await startSession(res, byEmail.id);
+      await startSession(req, res, byEmail.id);
       return res.json({ user: accounts.publicUser(byEmail) });
     }
 
@@ -304,7 +298,7 @@ router.post("/google", async (req, res) => {
       emailVerified: true,
     });
     await accounts.linkProvider(created.id, "google", profile.sub);
-    await startSession(res, created.id);
+    await startSession(req, res, created.id);
     res.status(201).json({ user: accounts.publicUser(created) });
   } catch (error) {
     const status = error.status || 500;
@@ -372,7 +366,7 @@ router.post("/reset-password", async (req, res) => {
       passwordHash,
       emailVerified: true,
     });
-    await startSession(res, user.id);
+    await startSession(req, res, user.id);
     res.json({ user: accounts.publicUser(user) });
   } catch (error) {
     console.error("Reset password error:", error.message);
@@ -416,7 +410,7 @@ router.post("/verify-email", async (req, res) => {
         return res.status(500).json({ error: "Could not verify email" });
       }
 
-      await startSession(res, user.id);
+      await startSession(req, res, user.id);
       return res.json({ success: true, user: accounts.publicUser(user) });
     }
 
@@ -428,7 +422,7 @@ router.post("/verify-email", async (req, res) => {
     }
 
     const user = await accounts.updateUser(row.user_id, { emailVerified: true });
-    await startSession(res, user.id);
+    await startSession(req, res, user.id);
     res.json({ success: true, user: accounts.publicUser(user) });
   } catch (error) {
     console.error("Verify email error:", error.message);

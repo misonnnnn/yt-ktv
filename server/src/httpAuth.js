@@ -43,20 +43,76 @@ function readCookie(req, name) {
   return null;
 }
 
-function writeSessionCookie(res, raw) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+function siteKey(host) {
+  const hostname = String(host || "")
+    .split(",")[0]
+    .trim()
+    .split(":")[0]
+    .toLowerCase();
+  if (
+    !hostname ||
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    /^\d{1,3}(?:\.\d{1,3}){3}$/.test(hostname)
+  ) {
+    return hostname;
+  }
+  const parts = hostname.split(".");
+  if (parts.length <= 2) return hostname;
+  return parts.slice(-2).join(".");
+}
+
+function isHttpsRequest(req) {
+  if (process.env.NODE_ENV === "production") return true;
+  if (req.secure) return true;
+  const forwarded = String(req.headers["x-forwarded-proto"] || "")
+    .split(",")[0]
+    .trim()
+    .toLowerCase();
+  if (forwarded === "https") return true;
+  try {
+    return new URL(String(req.headers.origin || "")).protocol === "https:";
+  } catch {
+    return false;
+  }
+}
+
+/** Browser page and API host are different sites (for example tarasing.online calling Railway). */
+function isCrossSiteRequest(req) {
+  const origin = req.headers.origin;
+  if (!origin) return false;
+  let originHost = "";
+  try {
+    originHost = new URL(origin).hostname;
+  } catch {
+    return false;
+  }
+  const requestHost = req.headers["x-forwarded-host"] || req.headers.host;
+  return siteKey(originHost) !== siteKey(requestHost);
+}
+
+function cookieAttributes(req) {
+  const https = isHttpsRequest(req);
+  if (isCrossSiteRequest(req) && https) {
+    // Lax cookies are dropped on a cross-site fetch, so the login body can
+    // succeed while every later request looks signed out.
+    return "; SameSite=None; Secure; Partitioned";
+  }
+  return https ? "; SameSite=Lax; Secure" : "; SameSite=Lax";
+}
+
+function writeSessionCookie(req, res, raw) {
   const maxAge = Math.floor(SESSION_MS / 1000);
   res.setHeader(
     "Set-Cookie",
-    `${COOKIE}=${raw}; HttpOnly; Path=/; Max-Age=${maxAge}; SameSite=Lax${secure}`
+    `${COOKIE}=${raw}; HttpOnly; Path=/; Max-Age=${maxAge}${cookieAttributes(req)}`
   );
 }
 
-function clearSessionCookie(res) {
-  const secure = process.env.NODE_ENV === "production" ? "; Secure" : "";
+function clearSessionCookie(req, res) {
   res.setHeader(
     "Set-Cookie",
-    `${COOKIE}=; HttpOnly; Path=/; Max-Age=0; SameSite=Lax${secure}`
+    `${COOKIE}=; HttpOnly; Path=/; Max-Age=0${cookieAttributes(req)}`
   );
 }
 
@@ -87,17 +143,17 @@ function rejectBadOrigin(req, res) {
   return true;
 }
 
-async function startSession(res, userId) {
+async function startSession(req, res, userId) {
   const token = newToken();
   const expiresAt = new Date(Date.now() + SESSION_MS);
   await accounts.createSession(userId, token.hash, expiresAt);
-  writeSessionCookie(res, token.raw);
+  writeSessionCookie(req, res, token.raw);
 }
 
 async function endSession(req, res) {
   const raw = readCookie(req, COOKIE);
   if (raw) await accounts.deleteSession(hashToken(raw));
-  clearSessionCookie(res);
+  clearSessionCookie(req, res);
 }
 
 function requireAccounts(res) {
@@ -118,5 +174,6 @@ module.exports = {
   rejectBadOrigin,
   startSession,
   endSession,
+  clearSessionCookie,
   requireAccounts,
 };
