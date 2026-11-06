@@ -32,7 +32,7 @@ function StatCard({
           <dd className="font-semibold text-white">{songs}</dd>
         </div>
         <div className="flex justify-between gap-4">
-          <dt className="text-white/50">Homepage visits</dt>
+          <dt className="text-white/50">Page visits</dt>
           <dd className="font-semibold text-white">{views}</dd>
         </div>
       </dl>
@@ -110,7 +110,7 @@ export default function AdminPage() {
       <main className="mx-auto w-full max-w-xl flex-1 px-6 pb-12">
         <h1 className="mb-2 text-3xl font-extrabold text-white">Admin</h1>
         <p className="mb-8 text-sm text-white/45">
-          Simple usage stats for TaraSing parties and homepage visits.
+          Simple usage stats for TaraSing parties and page visits.
         </p>
 
         {!stats && (
@@ -164,19 +164,19 @@ export default function AdminPage() {
               label="Today"
               rooms={stats.today.roomsCreated}
               songs={stats.today.songsQueued}
-              views={stats.today.homepageViews}
+              views={stats.today.pageViews}
             />
             <StatCard
               label="Last 7 days"
               rooms={stats.last7Days.roomsCreated}
               songs={stats.last7Days.songsQueued}
-              views={stats.last7Days.homepageViews}
+              views={stats.last7Days.pageViews}
             />
             <StatCard
               label="Last 30 days"
               rooms={stats.last30Days.roomsCreated}
               songs={stats.last30Days.songsQueued}
-              views={stats.last30Days.homepageViews}
+              views={stats.last30Days.pageViews}
             />
 
             {error && <p className="text-sm text-red-300">{error}</p>}

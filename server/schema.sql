@@ -161,7 +161,7 @@ CREATE TABLE IF NOT EXISTS daily_stats (
   day DATE NOT NULL PRIMARY KEY,
   rooms_created INT NOT NULL DEFAULT 0,
   songs_queued INT NOT NULL DEFAULT 0,
-  homepage_views INT NOT NULL DEFAULT 0
+  page_views INT NOT NULL DEFAULT 0
 );
 
 -- How often each video is added to a party queue. Rank is pick_count, highest first.

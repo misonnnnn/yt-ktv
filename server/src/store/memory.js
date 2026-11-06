@@ -3,7 +3,7 @@ let nextQueueId = 1;
 
 const roomsByCode = new Map();
 const queueByRoomId = new Map();
-/** day (YYYY-MM-DD) → { rooms_created, songs_queued, homepage_views } */
+/** day (YYYY-MM-DD) → { rooms_created, songs_queued, page_views } */
 const dailyStats = new Map();
 /** videoId → { video_id, title, artist, thumbnail, pick_count, last_picked_at } */
 const songPicks = new Map();
@@ -22,7 +22,7 @@ function bumpDailyStat(column) {
   const row = dailyStats.get(key) || {
     rooms_created: 0,
     songs_queued: 0,
-    homepage_views: 0,
+    page_views: 0,
   };
   row[column] = (row[column] || 0) + 1;
   dailyStats.set(key, row);
@@ -222,8 +222,8 @@ function deleteRoomByCode(roomCode) {
   return true;
 }
 
-function recordHomepageView() {
-  bumpDailyStat("homepage_views");
+function recordPageView() {
+  bumpDailyStat("page_views");
   return true;
 }
 
@@ -235,16 +235,16 @@ function sumStatsSince(daysAgo) {
 
   let roomsCreated = 0;
   let songsQueued = 0;
-  let homepageViews = 0;
+  let pageViews = 0;
 
   for (const [day, row] of dailyStats.entries()) {
     if (day < startKey) continue;
     roomsCreated += row.rooms_created || 0;
     songsQueued += row.songs_queued || 0;
-    homepageViews += row.homepage_views || 0;
+    pageViews += row.page_views || 0;
   }
 
-  return { roomsCreated, songsQueued, homepageViews };
+  return { roomsCreated, songsQueued, pageViews };
 }
 
 function getUsageStats() {
@@ -268,7 +268,7 @@ module.exports = {
   getNextWaitingItem,
   listRoomCodes,
   deleteRoomByCode,
-  recordHomepageView,
+  recordPageView,
   getUsageStats,
   listPopularSongs,
 };

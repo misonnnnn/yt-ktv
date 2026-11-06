@@ -406,15 +406,21 @@ app.post("/api/rooms/:roomCode/skip", async (req, res) => {
 
 // --- Lightweight usage stats ---
 
+function isCountablePagePath(path) {
+  if (path.length === 0 || path.length > 200) return false;
+  if (!/^\/(?:[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*)?$/.test(path)) return false;
+  if (path === "/admin" || path.startsWith("/admin/")) return false;
+  return true;
+}
+
 app.post("/api/page-views", async (req, res) => {
   try {
     const path = String(req.body?.path || "").trim();
-    // Only count the homepage for now (keeps this simple / hard to spam other paths)
-    if (path !== "/") {
+    if (!isCountablePagePath(path)) {
       return res.status(400).json({ error: "Unsupported path" });
     }
 
-    await store.recordHomepageView();
+    await store.recordPageView();
     res.json({ success: true });
   } catch (error) {
     console.error("Page view error:", error);

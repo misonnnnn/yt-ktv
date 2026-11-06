@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import LaunchAnnouncement from "@/components/LaunchAnnouncement";
+import PageVisitBeacon from "@/components/PageVisitBeacon";
 import { AuthProvider } from "@/components/AuthProvider";
 import "./globals.css";
 
@@ -87,6 +88,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         />
         <AuthProvider>
           {children}
+          <PageVisitBeacon />
           <LaunchAnnouncement />
         </AuthProvider>
       </body>

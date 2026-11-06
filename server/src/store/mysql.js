@@ -3,7 +3,7 @@ const { pool } = require("../db");
 const STAT_COLUMNS = new Set([
   "rooms_created",
   "songs_queued",
-  "homepage_views",
+  "page_views",
 ]);
 
 let dailyStatsReady = false;
@@ -21,9 +21,31 @@ async function ensureDailyStatsTable() {
       day DATE NOT NULL PRIMARY KEY,
       rooms_created INT NOT NULL DEFAULT 0,
       songs_queued INT NOT NULL DEFAULT 0,
-      homepage_views INT NOT NULL DEFAULT 0
+      page_views INT NOT NULL DEFAULT 0
     )
   `);
+
+  const [columns] = await pool.query(
+    `SELECT COLUMN_NAME FROM information_schema.COLUMNS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = 'daily_stats'`
+  );
+  const names = new Set(columns.map((row) => row.COLUMN_NAME));
+
+  if (names.has("homepage_views") && names.has("page_views")) {
+    await pool.query(
+      "UPDATE daily_stats SET page_views = page_views + homepage_views"
+    );
+    await pool.query("ALTER TABLE daily_stats DROP COLUMN homepage_views");
+  } else if (names.has("homepage_views")) {
+    await pool.query(
+      "ALTER TABLE daily_stats CHANGE homepage_views page_views INT NOT NULL DEFAULT 0"
+    );
+  } else if (!names.has("page_views")) {
+    await pool.query(
+      "ALTER TABLE daily_stats ADD COLUMN page_views INT NOT NULL DEFAULT 0"
+    );
+  }
+
   dailyStatsReady = true;
 }
 
@@ -209,8 +231,8 @@ async function listPopularSongs(page) {
   };
 }
 
-async function recordHomepageView() {
-  await bumpDailyStat("homepage_views");
+async function recordPageView() {
+  await bumpDailyStat("page_views");
   return true;
 }
 
@@ -220,7 +242,7 @@ async function sumStatsSince(daysAgo) {
     `SELECT
        COALESCE(SUM(rooms_created), 0) AS roomsCreated,
        COALESCE(SUM(songs_queued), 0) AS songsQueued,
-       COALESCE(SUM(homepage_views), 0) AS homepageViews
+       COALESCE(SUM(page_views), 0) AS pageViews
      FROM daily_stats
      WHERE day >= DATE_SUB(CURDATE(), INTERVAL ? DAY)`,
     [daysAgo]
@@ -228,7 +250,7 @@ async function sumStatsSince(daysAgo) {
   return {
     roomsCreated: Number(rows[0].roomsCreated) || 0,
     songsQueued: Number(rows[0].songsQueued) || 0,
-    homepageViews: Number(rows[0].homepageViews) || 0,
+    pageViews: Number(rows[0].pageViews) || 0,
   };
 }
 
@@ -312,7 +334,7 @@ module.exports = {
   getNextWaitingItem,
   listRoomCodes,
   deleteRoomByCode,
-  recordHomepageView,
+  recordPageView,
   getUsageStats,
   listPopularSongs,
 };

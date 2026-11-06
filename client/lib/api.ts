@@ -141,18 +141,18 @@ export function getJoinUrl(roomCode: string): string {
   }/join/${roomCode}`;
 }
 
-export async function recordHomepageView() {
+export async function recordPageView(path: string) {
   return apiRequest<{ success: boolean }>("/api/page-views", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: "/" }),
+    body: JSON.stringify({ path }),
   });
 }
 
 export type AdminPeriodStats = {
   roomsCreated: number;
   songsQueued: number;
-  homepageViews: number;
+  pageViews: number;
 };
 
 export type AdminStats = {

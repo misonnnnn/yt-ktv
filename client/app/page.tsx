@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import AccountMenu from "@/components/AccountMenu";
-import HomeVisitBeacon from "@/components/HomeVisitBeacon";
 import { SEO_LINKS } from "@/components/SeoPage";
 import SiteFooter from "@/components/SiteFooter";
 
@@ -71,8 +70,6 @@ export default function HomePage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
       />
-
-      <HomeVisitBeacon />
 
       <header className="flex justify-end px-4 pt-4 sm:px-6">
         <AccountMenu />
