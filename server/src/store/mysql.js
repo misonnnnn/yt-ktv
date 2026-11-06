@@ -6,7 +6,7 @@ const STAT_COLUMNS = new Set([
   "page_views",
 ]);
 
-let dailyStatsReady = false;
+let dailyStatsReady = null;
 let songPicksReady = false;
 const POPULAR_PAGE_SIZE = 7;
 
@@ -14,8 +14,17 @@ function clip(value, max) {
   return String(value || "").trim().slice(0, max);
 }
 
-async function ensureDailyStatsTable() {
-  if (dailyStatsReady) return;
+function ensureDailyStatsTable() {
+  if (!dailyStatsReady) {
+    dailyStatsReady = migrateDailyStatsTable().catch((error) => {
+      dailyStatsReady = null;
+      throw error;
+    });
+  }
+  return dailyStatsReady;
+}
+
+async function migrateDailyStatsTable() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS daily_stats (
       day DATE NOT NULL PRIMARY KEY,
@@ -45,8 +54,6 @@ async function ensureDailyStatsTable() {
       "ALTER TABLE daily_stats ADD COLUMN page_views INT NOT NULL DEFAULT 0"
     );
   }
-
-  dailyStatsReady = true;
 }
 
 async function bumpDailyStat(column) {
